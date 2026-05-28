@@ -1,0 +1,182 @@
+import streamlit as st
+import os
+import gc
+import openpyxl
+from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+from openpyxl.utils import get_column_letter
+
+# --- WEB PAGE SETUP ---
+st.set_page_config(page_title="Sabre Excel Converter", page_icon="✈️", layout="wide")
+st.title("✈️ Sabre Standard Horizontal Excel Converter")
+st.write("Upload your raw Sabre text files manually to generate a standard left-to-right spreadsheet matching your 44-column layout.")
+
+# The exact 44 columns matching your reference file layout running left-to-right
+HEADERS_44 = [
+    "PrimaryDocNbr", "PNRCreateDate", "VCRCreateDate", "Airline", "Country", "City", "PCC", 
+    "AgentSine", "CouponStatus", "ClassOfService", "FltNo", "OperatingFlightNbr", 
+    "MarketingAirlineCode", "OperatingAirlineCode", "Sector", "Fare", "CreateIATANr", 
+    "CustomerFullName", "BookingCode", "FareBasisCode", "TourCode", "CouponSeqNbr", 
+    "SegmentTypeCode", "ServiceStartDate", "ServiceStartTime", "ServiceEndDate", 
+    "ServiceEndTime", "FlownFlightNbr", "FlownServiceStartDate", "FlownServiceStartCity", 
+    "FlownServiceEndCity", "FlownClassOfService", "FlownFlightOrigDate", "ServiceStartCity", 
+    "ServiceEndCity", "OD", "Kind", "Origin", "Destination", "CountryName", 
+    "RegionName", "Nationality", "NationalName", "TTYAirlineCode"
+]
+
+# --- THE MANUAL UI WEB UPLOADER BOX ---
+uploaded_files = st.file_uploader(
+    "Drag and Drop or Click to Browse your Sabre Text Files manually:", 
+    type=["txt", "csv"], 
+    accept_multiple_files=True
+)
+
+def build_standard_sheet(ws, rows_data):
+    """Fills the Excel sheet using standard horizontal (Left-to-Right) rows."""
+    # Formatting styles
+    header_fill = PatternFill(start_color="1F4E79", end_color="1F4E79", fill_type="solid")
+    header_font = Font(name="Arial", size=11, bold=True, color="FFFFFF")
+    data_font = Font(name="Arial", size=10)
+    left_align = Alignment(horizontal="left", vertical="center")
+    right_align = Alignment(horizontal="right", vertical="center")
+    cell_border = Border(left=Side(style='thin', color='E0E0E0'), right=Side(style='thin', color='E0E0E0'),
+                         top=Side(style='thin', color='E0E0E0'), bottom=Side(style='thin', color='E0E0E0'))
+    
+    # Write the 44 headers across Row 1 (Left to Right)
+    for col_idx, header_name in enumerate(HEADERS_44, start=1):
+        cell = ws.cell(row=1, column=col_idx, value=header_name)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = left_align
+        cell.border = cell_border
+        
+    # Fill the data rows starting from Row 2 downwards
+    for row_idx, columns in enumerate(rows_data, start=2):
+        # FIXED: Added start=1 so column indexes count from 1 instead of 0
+        for col_idx, header_name in enumerate(HEADERS_44, start=1):
+            # Read elements from columns list based on index tracking (adjusting for list 0-index offset)
+            list_idx = col_idx - 1
+            val = columns[list_idx].strip() if list_idx < len(columns) else ""
+            
+            # Clean up missing value terms
+            if val.lower() in ["nan", "null", "undefined"]:
+                val = ""
+                
+            cell = ws.cell(row=row_idx, column=col_idx)
+            cell.font = data_font
+            cell.border = cell_border
+            
+            # Formatting Rules for Ticket Numbers and Prices
+            if header_name in ["PrimaryDocNbr", "Airline", "TicketNumber"]:
+                cell.value = val
+                cell.number_format = '@'  # Force Text format to lock 13-digit numbers
+                cell.alignment = left_align
+            elif "Fare" in header_name or "Amount" in header_name:
+                try:
+                    cell.value = float(val) if val else 0.0
+                except:
+                    cell.value = val
+                cell.number_format = '$#,##0.00'  # Force Currency format
+                cell.alignment = right_align
+            else:
+                cell.value = val
+                cell.alignment = left_align
+
+    # Set row height for headers
+    ws.row_dimensions[1].height = 26
+    
+    # Auto-adjust column widths based on content size
+    for col in ws.columns:
+        max_len = max(len(str(cell.value or '')) for cell in col)
+        col_letter = get_column_letter(col[0].column)
+        ws.column_dimensions[col_letter].width = max(max_len + 3, 15)
+
+# Process files only when user uploads them and clicks the button in the UI
+if uploaded_files:
+    st.info(f"Staged {len(uploaded_files)} files in the web interface memory.")
+    
+    if st.button("🚀 Convert Files to Horizontal Excel Format"):
+        all_parsed_rows = []
+        
+        for f in uploaded_files:
+            if f.size == 0:
+                continue
+                
+            # Decode file contents line-by-line
+            content = f.read().decode("utf-8", errors="ignore")
+            for line in content.splitlines():
+                line = line.strip()
+                if not line:
+                    continue
+                    
+                columns = line.split('|')
+                record_type = columns[0].strip()
+                
+                # Extract Data from '00' records
+                if record_type == '00':
+                    if len(columns) > 1:  # Clean PrimaryDocNbr at Position [1]
+                        columns[1] = columns[1].strip().split('.')[0]
+                    if len(columns) > 4:  # Pad Airline Code to 3 digits at Position [4]
+                        if columns[4].strip().isdigit():
+                            columns[4] = columns[4].strip().zfill(3)
+                    all_parsed_rows.append(columns)
+                    
+                # Extract Data from '18' records
+                elif record_type == '18':
+                    if len(columns) > 3:  # Clean PrimaryDocNbr at Position [3]
+                        columns[3] = columns[3].strip().split('.')[0]
+                    
+                    # Map the 18 line elements into our horizontal columns order
+                    ticket_number = columns[3]
+                    pnr_code = columns[1]
+                    booking_date = columns[2]
+                    airline_code = columns[6] if len(columns) > 6 else ""
+                    airline_name = columns[8] if len(columns) > 8 else ""
+                    passenger_name = columns[15] if len(columns) > 15 else ""
+                    passenger_type = columns[39] if len(columns) > 39 else ""
+                    fare_calc = columns[35] if len(columns) > 35 else ""
+                    
+                    # Calculate total fare if multiple amounts exist in columns 30 and 32
+                    calc_fare = ""
+                    try:
+                        amt1 = float(columns[30]) if len(columns) > 30 and columns[30] else 0.0
+                        amt2 = float(columns[32]) if len(columns) > 32 and columns[32] else 0.0
+                        if amt1 > 0 or amt2 > 0:
+                            calc_fare = str(amt1 + amt2)
+                    except:
+                        pass
+                    
+                    # Create a dummy row padded with empty fields matching layout definitions
+                    adjusted_columns = [""] * len(HEADERS_44)
+                    adjusted_columns[0] = ticket_number
+                    adjusted_columns[1] = booking_date
+                    adjusted_columns[3] = airline_code
+                    adjusted_columns[15] = calc_fare if calc_fare else columns[15] if len(columns) > 15 else ""
+                    adjusted_columns[17] = passenger_name
+                    adjusted_columns[18] = pnr_code
+                    adjusted_columns[43] = fare_calc
+                    
+                    all_parsed_rows.append(adjusted_columns)
+
+        if not all_parsed_rows:
+            st.error("❌ No valid Sabre '00' or '18' data found inside the uploaded text files.")
+        else:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Sabre Data Report"
+            
+            # Process standard Left-to-Right columns
+            build_standard_sheet(ws, all_parsed_rows)
+            
+            # Save file path destination update matching target workspace environment setup configuration parameters
+            output_filepath = os.path.join(r"D:\New folder\python_test", "Horizontal_Master_Flight_Report.xlsx")
+            os.makedirs(os.path.dirname(output_filepath), exist_ok=True)
+            wb.save(output_filepath)
+            wb.close()
+            
+            # UI Success Notification
+            st.success("✨ Success! Your data has been converted into a standard horizontal spreadsheet.")
+            st.balloons()
+            st.markdown(f"📁 **File saved safely on your hard drive at:**")
+            st.code(output_filepath)
+            
+            gc.collect()
