@@ -22,6 +22,129 @@ HEADERS_44 = [
 #  27=TkEndorsement, 29=TkProRation
 TICKET_RECORD_TYPES = {"18", "19", "20", "21", "22", "23", "25", "26", "27", "29"}
 
+# ─── IATA Airline Numeric Prefix → 2-letter IATA Code ─────────────────────────
+# First 3 digits of 13-digit e-ticket → airline designator code
+# If not found → use the 3-digit number itself
+AIRLINE_PREFIX = {
+    "014":"AC",  # Air Canada
+    "016":"UA",  # United Airlines
+    "018":"CP",  # Canadian Airlines
+    "020":"LH",  # Lufthansa
+    "027":"JM",  # Air Jamaica
+    "042":"PK",  # Pakistan Airlines
+    "043":"PX",  # Air Niugini
+    "044":"EY",  # Etihad Airways
+    "045":"AR",  # Aerolineas Argentinas
+    "047":"AV",  # Avianca
+    "048":"KL",  # KLM Royal Dutch
+    "050":"MS",  # Egyptair
+    "055":"OS",  # Austrian Airlines
+    "057":"AF",  # Air France
+    "060":"MP",  # Martinair
+    "064":"DE",  # Condor
+    "065":"LO",  # LOT Polish Airlines
+    "071":"ET",  # Ethiopian Airlines
+    "072":"GF",  # Gulf Air
+    "074":"WA",  # KLM Cityhopper
+    "076":"SQ",  # Singapore Airlines
+    "077":"BD",  # bmi British Midland
+    "079":"AI",  # Air India
+    "080":"OK",  # Czech Airlines
+    "081":"QF",  # Qantas
+    "082":"OZ",  # Asiana Airlines
+    "083":"SA",  # South African Airways
+    "086":"CA",  # Air China
+    "098":"KC",  # Air Astana
+    "105":"AY",  # Finnair
+    "106":"UL",  # Sri Lankan Airlines
+    "112":"NX",  # Air Macau
+    "114":"TG",  # Thai Airways
+    "117":"SK",  # SAS Scandinavian
+    "118":"LX",  # Swiss International
+    "125":"BA",  # British Airways
+    "129":"CM",  # Copa Airlines
+    "131":"JL",  # Japan Airlines
+    "134":"CX",  # Cathay Pacific
+    "137":"NZ",  # Air New Zealand
+    "139":"MU",  # China Eastern
+    "145":"FI",  # IcelandAir
+    "149":"AT",  # Royal Air Maroc
+    "160":"IB",  # Iberia
+    "169":"TP",  # TAP Air Portugal
+    "170":"CI",  # China Airlines
+    "172":"BI",  # Royal Brunei
+    "176":"EK",  # Emirates
+    "180":"KE",  # Korean Air
+    "185":"AZ",  # Alitalia / ITA Airways
+    "188":"K6",  # Air Cambodia
+    "201":"EI",  # Aer Lingus
+    "202":"MK",  # Air Mauritius
+    "205":"NH",  # ANA All Nippon
+    "206":"GA",  # Garuda Indonesia
+    "214":"VN",  # Vietnam Airlines
+    "217":"FD",  # Thai AirAsia
+    "220":"CL",  # Lufthansa CityLine
+    "230":"WY",  # Oman Air
+    "232":"MH",  # Malaysia Airlines
+    "235":"TK",  # Turkish Airlines
+    "258":"BR",  # EVA Air
+    "260":"NZ",  # Air New Zealand Link
+    "265":"HU",  # Hainan Airlines
+    "268":"K6",  # Cambodia Angkor Air
+    "279":"JS",  # Air Koryo
+    "297":"CZ",  # China Southern
+    "312":"BG",  # Biman Bangladesh
+    "330":"DL",  # Delta Air Lines
+    "350":"5J",  # Cebu Pacific
+    "357":"LG",  # Luxair
+    "406":"CF",  # China Postal Airlines
+    "412":"AM",  # Aeromexico
+    "444":"JJ",  # TAM Airlines (LATAM)
+    "479":"B6",  # JetBlue Airways
+    "489":"IX",  # Air India Express
+    "502":"EK",  # Emirates (alt)
+    "531":"D7",  # AirAsia X
+    "555":"VJ",  # Vietjet Air
+    "566":"7C",  # Jeju Air
+    "574":"8M",  # Myanmar Airways
+    "575":"SC",  # Shandong Airlines
+    "580":"PR",  # Philippine Airlines
+    "607":"QH",  # Bamboo Airways
+    "618":"UL",  # SriLankan Airlines
+    "631":"6T",  # Air Mandalay
+    "657":"NK",  # Spirit Airlines
+    "680":"K6",  # Air Cambodia (alt)
+    "695":"AA",  # American Airlines
+    "706":"WS",  # WestJet
+    "714":"AI",  # Air India (alt)
+    "724":"F9",  # Frontier Airlines
+    "769":"SY",  # Sun Country
+    "781":"WN",  # Southwest Airlines
+    "784":"G4",  # Allegiant Air
+    "812":"S7",  # Siberia Airlines
+    "826":"TS",  # Transat
+    "832":"AS",  # Alaska Airlines
+    "871":"HA",  # Hawaiian Airlines
+    "880":"SU",  # Aeroflot
+    "897":"A3",  # Aegean Airlines
+    "932":"9W",  # Jet Airways
+    "988":"BT",  # Air Baltic
+    "998":"VS",  # Virgin Atlantic
+    # K6-specific prefixes
+    "182":"K6",  # Air Cambodia
+    "189":"K6",  # Air Cambodia
+    "190":"K6",  # Air Cambodia
+}
+
+def get_airline_from_ticket(ticket_no):
+    """Extract 2-letter IATA airline code from first 3 digits of e-ticket.
+    Returns (prefix, iata_code). If not found, iata_code is empty."""
+    if not ticket_no or not re.match(r'^\d{13}$', str(ticket_no).strip()):
+        return "", ""
+    prefix = str(ticket_no).strip()[:3]
+    iata_code = AIRLINE_PREFIX.get(prefix, "")
+    return prefix, iata_code
+
 # ─── Record types where cols[1] is PNR and cols[3] is VCRDate (NOT ticket) ───
 # 00=Res, 01=ResFlight, 04=ResPassengerFT, 05=ResRemarks, 06=PreResSeat,
 # 07=ResPaxDoc, 08=ResSuspDocAgmt, 09=ResSuspTimeLmt, 10=ResEmergencyCtc,
@@ -102,10 +225,38 @@ def handle_18(cols, row):
     safe_set(row, "PNRCreateDate",   g(cols, 2))
     safe_set(row, "VCRCreateDate",   g(cols, 5))
     safe_set(row, "Airline",         g(cols, 10))
-    safe_set(row, "AgentSine",       g(cols, 9))
     safe_set(row, "CreateIATANr",    g(cols, 6))
     safe_set(row, "CustomerFullName",g(cols, 15))
-    safe_set(row, "Fare",            g(cols, 31))
+
+    # AgentSine: rec18[9] is the TICKETING agent (e.g. DWYSW, IRIAR/E)
+    # This should OVERWRITE the PCC position code (A00) from rec00
+    agent = g(cols, 9)
+    if agent:
+        row["AgentSine"] = agent
+
+    # Fare: find the amount and currency from nearby pipes
+    # rec18 fare structure varies, but typically:
+    #   Total fare amount + currency are near pipes 29-35
+    # Strategy: scan for a decimal number + a 3-letter currency code next to it
+    fare_amount = ""
+    fare_currency = ""
+    for i in range(27, min(len(cols), 55)):
+        val = g(cols, i)
+        # Look for currency code (3 uppercase letters)
+        if re.match(r'^[A-Z]{3}$', val) and val not in ("ADT","CHD","INF","INS","CCR","NET"):
+            fare_currency = val
+        # Look for the LAST substantial decimal amount (total fare)
+        if re.match(r'^\d+\.\d+$', val) and float(val) > 0:
+            fare_amount = val
+
+    if fare_amount:
+        try:
+            formatted = f"{float(fare_amount):,.2f}"
+            row["Fare"] = f"{formatted} {fare_currency}" if fare_currency else formatted
+        except ValueError:
+            row["Fare"] = fare_amount
+    elif not row.get("Fare"):
+        row["Fare"] = ""
 
 def handle_19(cols, row):
     """TkCoupon — one row per coupon/segment. cols[3] = TicketNo."""
@@ -134,7 +285,8 @@ def handle_00(cols, row):
     safe_set(row, "TTYAirlineCode", g(cols, 4))
     safe_set(row, "Airline",        g(cols, 13))
     safe_set(row, "PCC",            parse_pcc(g(cols, 11)))
-    safe_set(row, "AgentSine",      g(cols, 10))
+    # NOTE: rec00[9] and [10] are PCC/office codes (1B, A00), NOT the agent name.
+    # AgentSine is set by rec18[9] which has the actual ticketing agent (DWYSW, IRIAR/E).
     safe_set(row, "CreateIATANr",   g(cols, 18))
 
 def handle_01(cols, row):
@@ -320,6 +472,19 @@ def process_data(uploaded_files):
         if is_valid_ticket(idx) and pd.isna(df.at[idx, "PrimaryDocNbr"]):
             df.at[idx, "PrimaryDocNbr"] = idx
 
+    # ── Derive Airline from ticket prefix (first 3 digits) ────────────────────
+    # ALWAYS overwrite — ticket prefix gives the full airline name
+    # instead of just the 2-letter code (K6, AF, EK)
+    for idx in df.index:
+        doc = df.at[idx, "PrimaryDocNbr"]
+        if doc and is_valid_ticket(doc):
+            prefix, airline_name = get_airline_from_ticket(doc)
+            # Always set CreateIATANr from prefix
+            df.at[idx, "CreateIATANr"] = prefix
+            # Always overwrite Airline with full name from prefix
+            # If not found in map, use the 3-digit number itself
+            df.at[idx, "Airline"] = airline_name if airline_name else prefix
+
     return df
 
 # --- 4. STREAMLIT UI ---
@@ -357,6 +522,31 @@ with st.sidebar:
 `00` Res, `01` ResFlight,  
 `07` ResPaxDoc, `11` ResPassenger,  
 `16` ResODFlight, `08` SuspDoc
+    """)
+    st.markdown("---")
+    st.markdown("### CouponStatus Codes")
+    st.markdown("""
+| Code | Meaning |
+|---|---|
+| `CTRL` | Controlled — **not yet flown** |
+| `USED` | **Already flown** |
+| `OPEN` | Open, no flight assigned |
+| `VOID` | Cancelled |
+| `RFND` | Refunded |
+| `EXCH` | Exchanged |
+    """)
+    st.markdown("---")
+    st.markdown("### Airline from Ticket ✈️")
+    st.markdown("""
+First 3 digits → IATA 2-letter code:
+```
+188... → K6  (Air Cambodia)
+057... → AF  (Air France)
+176... → EK  (Emirates)
+125... → BA  (British Airways)
+999... → 999 (not found)
+```
+If not in map → shows 3-digit number.
     """)
 
 uploaded_files = st.file_uploader(
