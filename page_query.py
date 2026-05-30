@@ -21,12 +21,12 @@ _MONTH_NAMES = {
 
 
 def render(db_available: bool, query_fn, get_years_fn) -> None:
-    st.title("🔍 Query Data")
-    st.markdown("Filter records saved in SQL Server and export the results to Excel.")
+    st.title(":material/search: Query Data")
+    st.markdown("Filter records saved in the database and export the results to Excel.")
 
     if not db_available:
-        st.error("SQL Server packages are not installed.")
-        st.code("pip install sqlalchemy pyodbc", language="bash")
+        st.error("SQLAlchemy is not installed.", icon=":material/error:")
+        st.code("pip install sqlalchemy", language="bash")
         return
 
     # ── Filter controls ────────────────────────────────────────────────────────
@@ -82,7 +82,7 @@ def render(db_available: bool, query_fn, get_years_fn) -> None:
 
     # ── Query button ───────────────────────────────────────────────────────────
     st.markdown("")
-    run_query = st.button("🔍 Run Query", type="primary")
+    run_query = st.button("Run Query", icon=":material/search:", type="primary")
 
     if run_query:
         with st.spinner("Querying SQL Server…"):
@@ -95,7 +95,7 @@ def render(db_available: bool, query_fn, get_years_fn) -> None:
                 date_to=date_to,
             )
         if err:
-            st.error(f"Query failed: {err}")
+            st.error(f"Query failed: {err}", icon=":material/error:")
             st.session_state.pop("query_df", None)
         else:
             st.session_state["query_df"] = df
@@ -121,7 +121,8 @@ def render(db_available: bool, query_fn, get_years_fn) -> None:
         m4.metric("Filtered by", meta.get("date_col", "—"))
 
         if df.empty:
-            st.warning("Query returned 0 rows. Try adjusting the filters.")
+            st.warning("Query returned 0 rows. Try adjusting the filters.",
+                       icon=":material/filter_alt_off:")
             return
 
         st.markdown("### Results")
@@ -131,9 +132,8 @@ def render(db_available: bool, query_fn, get_years_fn) -> None:
         st.markdown("---")
         xl_col, _ = st.columns([1, 3])
         with xl_col:
-            st.markdown("#### 📥 Export")
+            st.markdown("#### Export")
             raw = BytesIO()
-            # Only style columns that match our 44-column schema
             from config import HEADERS_44
             style_df = df[[c for c in HEADERS_44 if c in df.columns]]
             style_df.to_excel(raw, index=False, engine="openpyxl")
@@ -141,10 +141,11 @@ def render(db_available: bool, query_fn, get_years_fn) -> None:
 
             fname = _build_filename(meta)
             st.download_button(
-                "📥 Download Excel",
+                "Download Excel",
                 styled_xl.getvalue(),
                 fname,
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                icon=":material/download:",
                 type="primary",
                 use_container_width=True,
             )

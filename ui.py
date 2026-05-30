@@ -133,17 +133,17 @@ div[data-testid="stTabs"] button[data-baseweb="tab"][aria-selected="true"] {
 # ── Navbar ─────────────────────────────────────────────────────────────────────
 def render_navbar(active_page: str) -> None:
     nav_pages = [
-        ("processor", "✈️  Processor"),
-        ("query",     "🔍  Query"),
-        ("guide",     "📖  Guide"),
-        ("database",  "🗄️  Database"),
+        ("processor", "Processor", ":material/flight:"),
+        ("query",     "Query",     ":material/search:"),
+        ("guide",     "Guide",     ":material/menu_book:"),
+        ("database",  "Database",  ":material/storage:"),
     ]
-    # Columns: one per nav item + spacer on the right
     cols = st.columns([1.2, 1.0, 1.0, 1.2, 5.6])
-    for i, (key, label) in enumerate(nav_pages):
+    for i, (key, label, icon) in enumerate(nav_pages):
         with cols[i]:
             btn_type = "primary" if key == active_page else "secondary"
-            if st.button(label, key=f"nav_{key}", use_container_width=True, type=btn_type):
+            if st.button(label, icon=icon, key=f"nav_{key}",
+                         use_container_width=True, type=btn_type):
                 st.session_state["page"] = key
                 st.rerun()
     st.markdown(
@@ -156,7 +156,7 @@ def render_navbar(active_page: str) -> None:
 def render_upload_sidebar() -> tuple:
     """Two uploaders (files + folder). Returns (all_unique_files, run_clicked)."""
     with st.sidebar:
-        st.markdown("## 📂 Upload Files")
+        st.markdown("## :material/folder: Upload Files")
         st.markdown(
             "<p style='font-size:12px;color:#888;margin-top:-10px;'>"
             "Supported: .txt · .dat · .log</p>",
@@ -169,13 +169,11 @@ def render_upload_sidebar() -> tuple:
         # ── Mode selector ─────────────────────────────────────────────────────
         mode = st.radio(
             "Import mode",
-            ["📄 Files", "📁 Folder"],
+            [":material/description:  Files", ":material/folder_open:  Folder"],
             horizontal=True,
             label_visibility="collapsed",
         )
 
-        # Key encodes both the reset counter and the mode so switching clears
-        # any previously uploaded content automatically.
         k = f"{st.session_state.uploader_key}_{mode}"
 
         # ── Single uploader, behaviour depends on mode ─────────────────────────
@@ -187,30 +185,31 @@ def render_upload_sidebar() -> tuple:
             label_visibility="collapsed",
         )
 
-        if mode == "📁 Folder":
-            # Inject webkitdirectory onto the last file input after render
+        if "Folder" in mode:
             components.html(_FOLDER_INJECT, height=0)
 
         # ── File list ─────────────────────────────────────────────────────────
         all_files = uploaded or []
         if all_files:
-            st.success(f"✅ **{len(all_files)}** file(s) ready")
+            st.success(f"**{len(all_files)}** file(s) ready", icon=":material/check_circle:")
             with st.container(height=180):
                 for f in all_files:
                     size_kb = round(len(f.getvalue()) / 1024, 1)
-                    st.caption(f"📄 **{f.name}** — `{size_kb} KB`")
+                    st.caption(f":material/description: **{f.name}** — `{size_kb} KB`")
 
         st.markdown("")
 
         busy = st.session_state.get("busy", False)
 
         run = st.button(
-            "🚀 Process Files",
+            "Process Files",
+            icon=":material/rocket_launch:",
             type="primary",
             use_container_width=True,
             disabled=busy or not bool(all_files),
         )
-        if st.button("🗑️ Clear All", use_container_width=True, disabled=busy):
+        if st.button("Clear All", icon=":material/delete:",
+                     use_container_width=True, disabled=busy):
             st.session_state.uploader_key += 1
             st.session_state.pop("df", None)
             st.rerun()
@@ -250,10 +249,11 @@ def render_results(df: pd.DataFrame, db_available: bool = False, save_fn=None) -
 
     with dl_col:
         st.download_button(
-            "📥 Excel",
+            "Excel",
             styled_xl.getvalue(),
             fname,
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            icon=":material/download:",
             use_container_width=True,
             help="Download as formatted Excel file",
             disabled=busy,
@@ -262,10 +262,10 @@ def render_results(df: pd.DataFrame, db_available: bool = False, save_fn=None) -
     if db_available and save_fn:
         with db_col:
             if busy:
-                # Show locked placeholder — no popover while working
-                st.button("💾 Save", use_container_width=True, disabled=True)
+                st.button("Save", icon=":material/save:",
+                          use_container_width=True, disabled=True)
             else:
-                with st.popover("💾 Save", use_container_width=True):
+                with st.popover(":material/save: Save", use_container_width=True):
                     st.markdown("**Save to database**")
                     table_name  = st.text_input("Table", value="SabreReport")
                     batch_label = st.text_input(
@@ -274,7 +274,8 @@ def render_results(df: pd.DataFrame, db_available: bool = False, save_fn=None) -
                         help="Tag added to every row to identify this import.",
                     )
                     write_mode = st.selectbox("If exists", ["append", "replace"])
-                    if st.button("💾 Save", type="primary", use_container_width=True):
+                    if st.button("Save", icon=":material/save:",
+                                 type="primary", use_container_width=True):
                         save_fn(
                             df, table=table_name,
                             if_exists=write_mode, batch_label=batch_label,
@@ -321,7 +322,8 @@ def render_results(df: pd.DataFrame, db_available: bool = False, save_fn=None) -
         )
 
     with prev_col:
-        if st.button("◀", use_container_width=True, disabled=(page == 0)):
+        if st.button("", icon=":material/chevron_left:",
+                     use_container_width=True, disabled=(page == 0)):
             st.session_state["tbl_page"] -= 1
             st.rerun()
 
@@ -334,7 +336,8 @@ def render_results(df: pd.DataFrame, db_available: bool = False, save_fn=None) -
         )
 
     with next_col:
-        if st.button("▶", use_container_width=True, disabled=(page >= total_pages - 1)):
+        if st.button("", icon=":material/chevron_right:",
+                     use_container_width=True, disabled=(page >= total_pages - 1)):
             st.session_state["tbl_page"] += 1
             st.rerun()
 
@@ -349,7 +352,7 @@ def render_results(df: pd.DataFrame, db_available: bool = False, save_fn=None) -
     # ── Table (current page only) ───────────────────────────────────────────────
     st.dataframe(page_df, use_container_width=True, height=520)
 
-    with st.expander("📊 Column coverage"):
+    with st.expander("Column coverage", icon=":material/bar_chart:"):
         cov = [
             {
                 "Column":   h,

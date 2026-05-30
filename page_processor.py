@@ -33,7 +33,7 @@ def render(uploaded_files: list, run: bool, db_available: bool, real_save_fn) ->
         return
 
     # ── Normal render ─────────────────────────────────────────────────────────
-    st.title("✈️ Sabre Master Processor")
+    st.title(":material/flight: Sabre Master Processor")
     st.markdown(
         "Upload Sabre `.txt` files → auto-map to **44 columns** "
         "→ download Excel or save to the database."
@@ -48,7 +48,8 @@ def render(uploaded_files: list, run: bool, db_available: bool, real_save_fn) ->
             save_fn=_save_trigger,   # triggers phase instead of calling DB directly
         )
     else:
-        st.info("Upload one or more Sabre files on the left, then click **Process Files**.")
+        st.info("Upload one or more Sabre files on the left, then click **Process Files**.",
+                icon=":material/info:")
 
 
 # ── Execute helpers ───────────────────────────────────────────────────────────
@@ -116,22 +117,9 @@ def _save_trigger(df, table, if_exists, batch_label) -> None:
 
 def _busy_banner() -> None:
     msg = st.session_state.get("busy_msg", "Working…")
-    st.markdown(
-        f"""
-        <div style="
-            background:#fffbe6;border:1px solid #ffe58f;border-radius:10px;
-            padding:16px 22px;margin-bottom:20px;
-            display:flex;align-items:center;gap:14px;">
-          <span style="font-size:24px;line-height:1;">⏳</span>
-          <div>
-            <div style="font-size:14px;font-weight:700;color:#7d4e00;">{msg}</div>
-            <div style="font-size:12px;color:#a07800;margin-top:3px;">
-              Please wait — all actions are locked until this completes.
-            </div>
-          </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
+    st.warning(
+        f"**{msg}**  \nPlease wait — all actions are locked until this completes.",
+        icon=":material/hourglass_empty:",
     )
 
 
@@ -143,11 +131,12 @@ def _render_last_result_badge() -> None:
 
     if last == "process":
         rows = st.session_state.get("last_rows", 0)
-        st.success(f"✅ Processed **{rows:,}** rows — ⏱ {t} s")
+        st.success(f"Processed **{rows:,}** rows — :material/timer: {t} s",
+                   icon=":material/check_circle:")
 
     elif last == "save":
         ok, msg = st.session_state.get("save_result", (False, ""))
         if ok:
-            st.success(f"💾 {msg} — ⏱ {t} s")
+            st.success(f"{msg} — :material/timer: {t} s", icon=":material/save:")
         else:
-            st.error(msg)
+            st.error(msg, icon=":material/error:")

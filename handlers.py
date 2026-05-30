@@ -70,7 +70,7 @@ def handle_18(cols, row):
 
 def handle_19(cols, row):
     safe_set(row, "PrimaryDocNbr",        g(cols, 3))
-    safe_set(row, "CouponStatus",         g(cols, 15))
+    row["CouponStatus"] = g(cols, 8)      # col 8 = CTRL/USED/OPEN/VOID/RFND/EXCH
     safe_set(row, "ClassOfService",       g(cols, 20))
     safe_set(row, "FltNo",                g(cols, 12))
     safe_set(row, "CouponSeqNbr",         g(cols, 7))
@@ -100,7 +100,6 @@ def handle_00(cols, row):
 def handle_01(cols, row):
     safe_set(row, "BookingCode",          g(cols, 5))
     safe_set(row, "ClassOfService",       g(cols, 5))
-    safe_set(row, "CouponStatus",         g(cols, 10))
     safe_set(row, "SegmentTypeCode",      g(cols, 11))
     safe_set(row, "FltNo",                g(cols, 15))
     safe_set(row, "MarketingAirlineCode", g(cols, 16))
