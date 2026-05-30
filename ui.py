@@ -202,13 +202,15 @@ def render_upload_sidebar() -> tuple:
 
         st.markdown("")
 
+        busy = st.session_state.get("busy", False)
+
         run = st.button(
             "🚀 Process Files",
             type="primary",
             use_container_width=True,
-            disabled=not bool(all_files),
+            disabled=busy or not bool(all_files),
         )
-        if st.button("🗑️ Clear All", use_container_width=True):
+        if st.button("🗑️ Clear All", use_container_width=True, disabled=busy):
             st.session_state.uploader_key += 1
             st.session_state.pop("df", None)
             st.rerun()
@@ -240,6 +242,7 @@ def render_results(df: pd.DataFrame, db_available: bool = False, save_fn=None) -
     fname = f"Sabre_Report_{pd.Timestamp.now().strftime('%Y%m%d_%H%M')}.xlsx"
 
     # ── Compact action toolbar above the table ─────────────────────────────────
+    busy = st.session_state.get("busy", False)
     title_col, spacer_col, dl_col, db_col = st.columns([5, 1.5, 1.2, 1.2])
 
     with title_col:
@@ -253,29 +256,98 @@ def render_results(df: pd.DataFrame, db_available: bool = False, save_fn=None) -
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             use_container_width=True,
             help="Download as formatted Excel file",
+            disabled=busy,
         )
 
     if db_available and save_fn:
         with db_col:
-            with st.popover("💾 Save", use_container_width=True):
-                st.markdown("**Save to SQL Server**")
-                table_name  = st.text_input("Table", value="SabreReport")
-                batch_label = st.text_input(
-                    "Batch label",
-                    value=pd.Timestamp.now().strftime("%Y-%m-%d"),
-                    help="Tag added to every row to identify this import.",
-                )
-                write_mode = st.selectbox("If exists", ["append", "replace"])
-                if st.button("💾 Save", type="primary", use_container_width=True):
-                    with st.spinner("Saving…"):
-                        ok, msg = save_fn(
+            if busy:
+                # Show locked placeholder — no popover while working
+                st.button("💾 Save", use_container_width=True, disabled=True)
+            else:
+                with st.popover("💾 Save", use_container_width=True):
+                    st.markdown("**Save to database**")
+                    table_name  = st.text_input("Table", value="SabreReport")
+                    batch_label = st.text_input(
+                        "Batch label",
+                        value=pd.Timestamp.now().strftime("%Y-%m-%d"),
+                        help="Tag added to every row to identify this import.",
+                    )
+                    write_mode = st.selectbox("If exists", ["append", "replace"])
+                    if st.button("💾 Save", type="primary", use_container_width=True):
+                        save_fn(
                             df, table=table_name,
                             if_exists=write_mode, batch_label=batch_label,
                         )
-                    st.success(msg) if ok else st.error(msg)
 
-    # ── Table ──────────────────────────────────────────────────────────────────
-    st.dataframe(df, use_container_width=True, height=520)
+    # ── Pagination ─────────────────────────────────────────────────────────────
+    _PAGE_SIZES = [50, 100, 200, 500]
+    total_rows  = len(df)
+
+    # Initialise state
+    if "tbl_page" not in st.session_state:
+        st.session_state["tbl_page"] = 0
+    if "tbl_size" not in st.session_state:
+        st.session_state["tbl_size"] = 100
+
+    # Reset to page 0 whenever the dataset changes
+    df_sig = (total_rows, list(df.columns))
+    if st.session_state.get("_tbl_sig") != str(df_sig):
+        st.session_state["tbl_page"] = 0
+        st.session_state["_tbl_sig"] = str(df_sig)
+
+    page_size   = st.session_state["tbl_size"]
+    total_pages = max(1, (total_rows + page_size - 1) // page_size)
+    page        = min(st.session_state["tbl_page"], total_pages - 1)
+    st.session_state["tbl_page"] = page
+
+    start_idx = page * page_size
+    end_idx   = min(start_idx + page_size, total_rows)
+    page_df   = df.iloc[start_idx:end_idx]
+
+    # Controls bar
+    sz_col, prev_col, info_col, next_col, rows_col = st.columns([1.6, 0.55, 2.2, 0.55, 2.2])
+
+    with sz_col:
+        def _reset_page():
+            st.session_state["tbl_page"] = 0
+        st.selectbox(
+            "Rows/page",
+            _PAGE_SIZES,
+            index=_PAGE_SIZES.index(page_size) if page_size in _PAGE_SIZES else 1,
+            key="tbl_size",
+            on_change=_reset_page,
+            label_visibility="collapsed",
+        )
+
+    with prev_col:
+        if st.button("◀", use_container_width=True, disabled=(page == 0)):
+            st.session_state["tbl_page"] -= 1
+            st.rerun()
+
+    with info_col:
+        st.markdown(
+            f"<p style='text-align:center;margin:0;padding-top:7px;"
+            f"font-size:13px;color:#444;'>"
+            f"Page <b>{page + 1}</b> / <b>{total_pages}</b></p>",
+            unsafe_allow_html=True,
+        )
+
+    with next_col:
+        if st.button("▶", use_container_width=True, disabled=(page >= total_pages - 1)):
+            st.session_state["tbl_page"] += 1
+            st.rerun()
+
+    with rows_col:
+        st.markdown(
+            f"<p style='text-align:right;margin:0;padding-top:7px;"
+            f"font-size:12px;color:#888;'>"
+            f"Rows {start_idx + 1:,} – {end_idx:,} of {total_rows:,}</p>",
+            unsafe_allow_html=True,
+        )
+
+    # ── Table (current page only) ───────────────────────────────────────────────
+    st.dataframe(page_df, use_container_width=True, height=520)
 
     with st.expander("📊 Column coverage"):
         cov = [
