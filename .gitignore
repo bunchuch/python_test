@@ -1,1 +1,6 @@
 upload_files
+__pycache__/
+*.pyc
+*.db
+dist/
+build/

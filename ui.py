@@ -167,7 +167,7 @@ def render_navbar(active_page: str) -> None:
 def render_upload_sidebar() -> tuple:
     """Two uploaders (files + folder). Returns (all_unique_files, run_clicked)."""
     with st.sidebar:
-        st.image("assets/K6.png", use_container_width=True)
+        st.image("assets/K6.png", width="stretch")
         st.markdown("## :material/folder: Upload Files")
         st.markdown(
             "<p style='font-size:12px;color:#888;margin-top:-10px;'>"
