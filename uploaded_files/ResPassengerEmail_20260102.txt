@@ -1,0 +1,23 @@
+14|WYJPWQ|2025-03-11|2026-01-02 07:32:24.439000|1|abc@gmail.com||||0|1
+14|QLAWHR|2025-03-11|2026-01-02 03:15:31.323000|1|lis.socheat@exotravel.com|APE |2025-12-23|21:29:00|21|0
+14|QLAWHR|2025-03-11|2026-01-02 03:15:31.323000|1|lis.socheat@exotravel.com||||0|0
+14|SNRFDJ|2025-03-15|2026-01-01 23:53:25.707000|1|ma.pete@outlook.com||||0|1
+14|FOINOX|2025-03-17|2026-01-01 22:57:48.933000|1|janemannering@yahoo.com||||0|1
+14|AUWCAO|2025-03-25|2026-01-01 16:24:55.812000|1|rikkew81@gmail.com||||0|1
+14|WNDBPP|2025-03-28|2026-01-02 04:27:21.698000|1|wetrep@online.com.kh|APE |2026-01-02|02:11:00|13|0
+14|WNDBPP|2025-03-28|2026-01-02 04:27:21.698000|1|wetrep@online.com.kh|APE |2026-01-02|02:09:00|11|0
+14|WNDBPP|2025-03-28|2026-01-02 04:27:21.698000|1|wetrep@online.com.kh||||0|0
+14|WNDBPP|2025-03-28|2026-01-02 04:27:21.698000|3|wetrep@online.com.kh||||0|1
+14|WNDBPP|2025-03-28|2026-01-02 04:27:21.698000|2|wetrep@online.com.kh||||0|0
+14|MNZMHH|2025-03-30|2026-01-02 02:28:01.026000|2|wdaniel127@gmail.com||||0|1
+14|MNZMHH|2025-03-30|2026-01-02 02:28:01.026000|1|wdaniel127@gmail.com||||0|0
+14|YZANFO|2025-04-04|2026-01-02 03:15:23.275000|2|tomas.saroun@gmail.com||||0|1
+14|YZANFO|2025-04-04|2026-01-02 03:15:23.275000|1|tomas.saroun@gmail.com||||0|0
+14|JKKMTM|2025-04-22|2026-01-02 06:19:45.115000|1|nakanotakuma@hotmail.com||||0|1
+14|NSYFFP|2025-04-25|2026-01-01 23:30:24.176000|1|tomas.saroun@gmail.com||||0|1
+14|OTXKDV|2025-04-27|2026-01-01 23:46:39.556000|1|bov_ticketing@aircambodia.com||||0|0
+14|QLMZWL|2025-04-27|2026-01-02 03:31:40.463000|1|crhasler@hotmail.com||||0|1
+14|YBRQBP|2025-04-27|2026-01-02 02:57:38.267000|1|sokandra@gmail.com||||0|1
+14|FUHEAI|2025-05-02|2026-01-02 02:00:24.087000|1|xanthe.farrugia.1234@gmail.com||||0|1
+14|WLODZA|2025-05-04|2026-01-02 04:11:13.107000|1|victor.backstrand@gmail.com||||0|1
+14|AAIIHF|2025-05-04|2026-01-02 04:15:49.929000|1|victor.backstrand@gmail.com||||0|1
