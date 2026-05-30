@@ -38,6 +38,11 @@ _FOLDER_INJECT = """
 
 PAGE_CSS = """
 <style>
+/* Page titles — slightly smaller than Streamlit default */
+h1 {
+    font-size: 20px !important;
+}
+
 /* White header bar */
 [data-testid="stHeader"] {
     background: #ffffff !important;
@@ -52,7 +57,7 @@ div[data-testid="stHorizontalBlock"] div.stButton button {
     border-radius: 0 !important;
     box-shadow: none !important;
     white-space: nowrap !important;
-    font-size: 13px !important;
+    font-size: 12px !important;
     height: 34px !important;
     padding: 6px 10px !important;
 }
@@ -71,20 +76,26 @@ div[data-testid="stHorizontalBlock"] div.stButton button[kind="primary"] {
     color: #1F4E79 !important;
     font-weight: 700 !important;
     border-bottom: 2px solid #1F4E79 !important;
+    font-size: 12px;
 }
 
 /* Big upload drop zone */
 [data-testid="stFileUploaderDropzone"] {
-    border: 2.5px dashed #2E86C1 !important;
-    border-radius: 16px !important;
-    background: linear-gradient(145deg, #eaf4ff, #f5f9ff) !important;
+    border: 1.5px dashed #2E86C1 !important;
+    border-radius: 10px !important;
+    # background: linear-gradient(145deg, #eaf4ff, #f5f9ff) !important;
     padding: 40px 20px !important;
     min-height: 180px !important;
 }
 [data-testid="stFileUploaderDropzoneInstructions"] span {
-    font-size: 15px !important;
+    font-size: 12px !important;
     color: #1F4E79 !important;
     font-weight: 600 !important;
+}
+
+/* Hide the Upload browse button — dropzone area stays clickable */
+[data-testid="stFileUploaderDropzone"] button {
+    display: none !important;
 }
 
 /* Nested tabs inside pages (Database config tabs, etc.) */
@@ -156,12 +167,14 @@ def render_navbar(active_page: str) -> None:
 def render_upload_sidebar() -> tuple:
     """Two uploaders (files + folder). Returns (all_unique_files, run_clicked)."""
     with st.sidebar:
+        st.image("assets/K6.png", use_container_width=True)
         st.markdown("## :material/folder: Upload Files")
         st.markdown(
             "<p style='font-size:12px;color:#888;margin-top:-10px;'>"
             "Supported: .txt · .dat · .log</p>",
             unsafe_allow_html=True,
         )
+        
 
         if "uploader_key" not in st.session_state:
             st.session_state.uploader_key = 0
