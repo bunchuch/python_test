@@ -3,27 +3,36 @@ import streamlit as st
 import page_processor
 import page_guide
 import page_database
-from ui import PAGE_CSS, render_upload_sidebar
+import page_query
+from ui import PAGE_CSS, render_navbar, render_upload_sidebar
 
 try:
-    from db import save_to_db, test_connection
+    from db import save_to_db, test_connection, query_data, get_available_years
     DB_AVAILABLE = True
 except ImportError:
     DB_AVAILABLE = False
-    save_to_db = test_connection = None
+    save_to_db = test_connection = query_data = get_available_years = None
 
 st.set_page_config(page_title="Sabre Mapper", page_icon="✈️", layout="wide")
 st.markdown(PAGE_CSS, unsafe_allow_html=True)
 
-uploaded_files, run = render_upload_sidebar()
+if "page" not in st.session_state:
+    st.session_state["page"] = "processor"
+page = st.session_state["page"]
 
-tab1, tab2, tab3 = st.tabs(["✈️  Processor", "📖  Guide", "🗄️  Database"])
+render_navbar(page)
 
-with tab1:
-    page_processor.render(uploaded_files, run, DB_AVAILABLE, save_to_db)
+# Sidebar uploader is only needed on the Processor page
+if page == "processor":
+    uploaded_files, run = render_upload_sidebar()
+else:
+    uploaded_files, run = [], False
 
-with tab2:
+if page == "guide":
     page_guide.render()
-
-with tab3:
+elif page == "database":
     page_database.render(DB_AVAILABLE, test_connection)
+elif page == "query":
+    page_query.render(DB_AVAILABLE, query_data, get_available_years)
+else:
+    page_processor.render(uploaded_files, run, DB_AVAILABLE, save_to_db)

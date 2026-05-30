@@ -3,74 +3,92 @@ import streamlit as st
 
 def render(db_available: bool, test_connection_fn) -> None:
     st.title("🗄️ Database Connection")
-    st.markdown("Configure and test the SQL Server connection used to save processed data.")
 
     if not db_available:
-        st.error("SQL Server packages are not installed.")
-        st.code("pip install sqlalchemy pyodbc", language="bash")
+        st.error("SQLAlchemy is not installed.")
+        st.code("pip install sqlalchemy", language="bash")
         return
 
-    from db import DB_CONFIG
+    from db import DB_MODE, SQLITE_PATH, DB_CONFIG
 
-    # ── Connection status ──────────────────────────────────────────────────────
+    # ── Active mode banner ─────────────────────────────────────────────────────
+    if DB_MODE == "sqlite":
+        st.info(
+            f"**Mode: SQLite (testing)** — data is stored in `{SQLITE_PATH}` "
+            "in the project folder. No driver or server required.",
+            icon="🧪",
+        )
+    else:
+        st.success(
+            f"**Mode: SQL Server (production)** — "
+            f"`{DB_CONFIG.get('database')}` on `{DB_CONFIG.get('server')}`",
+            icon="🏭",
+        )
+
+    # ── Test connection ────────────────────────────────────────────────────────
     st.markdown("---")
     st.markdown("## Connection Status")
-    status_col, info_col = st.columns([1, 2])
-    with status_col:
+    col_btn, col_result = st.columns([1, 3])
+    with col_btn:
         if st.button("🔌 Test Connection", type="primary", use_container_width=True):
-            with st.spinner("Connecting..."):
+            with st.spinner("Connecting…"):
                 ok, msg = test_connection_fn()
             st.session_state["db_status"] = (ok, msg)
 
     if "db_status" in st.session_state:
         ok, msg = st.session_state["db_status"]
-        with info_col:
+        with col_result:
             if ok:
-                st.success(f"🟢 **Connected** — {msg}")
+                st.success(f"🟢 {msg}")
             else:
-                st.error(f"🔴 **Failed** — {msg}")
+                st.error(f"🔴 {msg}")
 
     # ── Current config ─────────────────────────────────────────────────────────
     st.markdown("---")
     st.markdown("## Current Configuration")
-    st.markdown("Edit **`db.py`** → `DB_CONFIG` to change these values, then restart the app.")
 
-    auth = "SQL Server Auth" if DB_CONFIG.get("username") else "Windows Auth"
-    c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Server",   DB_CONFIG.get("server",   "—"))
-    c2.metric("Database", DB_CONFIG.get("database", "—"))
-    c3.metric("Driver",   DB_CONFIG.get("driver", "—")[:22] + "…")
-    c4.metric("Auth",     auth)
+    if DB_MODE == "sqlite":
+        c1, c2 = st.columns(2)
+        c1.metric("Mode",      "SQLite")
+        c2.metric("File",      SQLITE_PATH)
+    else:
+        auth = "SQL Server Auth" if DB_CONFIG.get("username") else "Windows Auth"
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("Mode",      "SQL Server")
+        c2.metric("Server",    DB_CONFIG.get("server", "—"))
+        c3.metric("Database",  DB_CONFIG.get("database", "—"))
+        c4.metric("Auth",      auth)
 
-    # ── Config examples ────────────────────────────────────────────────────────
+    # ── How to switch ──────────────────────────────────────────────────────────
     st.markdown("---")
-    st.markdown("## How to Configure")
-    tab1, tab2 = st.tabs(["Windows Auth", "SQL Server Auth"])
-    with tab1:
-        st.markdown("Use this when the app runs on a Windows machine with domain access.")
-        st.code("""
-DB_CONFIG = {
-    "server":   "YOUR_SERVER",          # e.g. "192.168.1.10" or "SERVER\\\\INSTANCE"
-    "database": "SabreDB",
-    "driver":   "ODBC Driver 17 for SQL Server",
-    "username": "",                     # blank = Windows Auth
-    "password": "",
-}
-""", language="python")
-    with tab2:
-        st.markdown("Use this when connecting with a SQL Server login.")
-        st.code("""
-DB_CONFIG = {
-    "server":   "YOUR_SERVER",
-    "database": "SabreDB",
-    "driver":   "ODBC Driver 17 for SQL Server",
-    "username": "sa",
-    "password": "your_password",
-}
-""", language="python")
+    st.markdown("## How to Switch Mode")
+    st.markdown("Edit **`db.py`** → change `DB_MODE`, then restart the app.")
 
-    st.markdown("---")
-    st.info(
-        "**ODBC Driver required** — download from Microsoft if not installed:  \n"
-        "https://learn.microsoft.com/en-us/sql/connect/odbc/download-odbc-driver-for-sql-server"
-    )
+    tab_sqlite, tab_sql = st.tabs(["🧪 SQLite (testing)", "🏭 SQL Server (production)"])
+
+    with tab_sqlite:
+        st.markdown("Zero setup — perfect for local development and testing.")
+        st.code(
+            'DB_MODE = "sqlite"\n'
+            'SQLITE_PATH = "sabre_test.db"   # file created automatically',
+            language="python",
+        )
+
+    with tab_sql:
+        st.markdown("Requires `pyodbc` and the Microsoft ODBC Driver.")
+        st.code("pip install pyodbc", language="bash")
+        st.code(
+            'DB_MODE = "sqlserver"\n\n'
+            'DB_CONFIG = {\n'
+            '    "server":   "YOUR_SERVER",\n'
+            '    "database": "SabreDB",\n'
+            '    "driver":   "ODBC Driver 17 for SQL Server",\n'
+            '    "username": "",   # blank = Windows Auth\n'
+            '    "password": "",\n'
+            '}',
+            language="python",
+        )
+        st.info(
+            "ODBC Driver download: "
+            "https://learn.microsoft.com/en-us/sql/connect/odbc/download-odbc-driver-for-sql-server"
+        )
