@@ -7,14 +7,35 @@ A Streamlit web app that parses raw Sabre `.txt` data files, maps them to a flat
 ## Project Structure
 
 ```
-python_test/
-├── main.py          # Streamlit UI — entry point
-├── config.py        # Constants: column headers, record types, lookup maps
-├── handlers.py      # Record parsers (handle_00 … handle_25) + dispatch table
-├── processor.py     # Two-pass processing engine (process_data)
-├── excel_utils.py   # Excel styling: header colours, table stripes, auto-fit
-├── db.py            # SQL Server connection + save helpers
-└── README.md
+sabre-mapper/
+├── main.py                  # Streamlit entry point
+├── ui.py                    # Shared UI: navbar, sidebar, results panel
+│
+├── core/                    # Business logic
+│   ├── config.py            # Column headers, record types, lookup maps
+│   ├── handlers.py          # Record parsers (handle_00 … handle_25)
+│   └── processor.py         # Two-pass processing engine
+│
+├── data/                    # Data layer
+│   ├── db.py                # SQLite / SQL Server connection + helpers
+│   └── excel_utils.py       # Excel styling: header, stripes, auto-fit
+│
+├── views/                   # Page modules (routed by main.py)
+│   ├── page_processor.py    # Processor page
+│   ├── page_query.py        # Query & export page
+│   ├── page_database.py     # Database config page
+│   └── page_guide.py        # Guide / reference page
+│
+├── assets/                  # Static files (logo, images)
+│   └── K6.png
+│
+├── docs/                    # Documentation
+│   └── SABRE_DATA_MAPPING.md
+│
+├── .streamlit/
+│   └── config.toml          # Theme, upload size, usage stats
+├── requirements.txt
+└── .gitignore
 ```
 
 ---

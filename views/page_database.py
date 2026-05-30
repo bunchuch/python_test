@@ -9,7 +9,7 @@ def render(db_available: bool, test_connection_fn) -> None:
         st.code("pip install sqlalchemy", language="bash")
         return
 
-    from db import DB_MODE, SQLITE_PATH, DB_CONFIG
+    from data.db import DB_MODE, SQLITE_PATH, DB_CONFIG
 
     # ── Active mode banner ─────────────────────────────────────────────────────
     if DB_MODE == "sqlite":

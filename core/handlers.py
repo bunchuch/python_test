@@ -1,6 +1,6 @@
 import re
 
-from config import AIRLINE_PREFIX, AIRPORT_CITY, COUNTRY_MAP, NAT_MAP, REGION_MAP
+from core.config import AIRLINE_PREFIX, AIRPORT_CITY, COUNTRY_MAP, NAT_MAP, REGION_MAP
 
 
 def is_valid_ticket(val):

@@ -3,9 +3,9 @@ import streamlit as st
 import streamlit.components.v1 as components
 from io import BytesIO
 
-from config import HEADERS_44
-from excel_utils import apply_excel_styles
-from handlers import is_valid_ticket
+from core.config import HEADERS_44
+from data.excel_utils import apply_excel_styles
+from core.handlers import is_valid_ticket
 
 # Injects webkitdirectory onto the LAST file input rendered in the page.
 # Runs once on load, then again on every DOM mutation so it survives Streamlit rerenders.

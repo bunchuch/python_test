@@ -2,7 +2,7 @@ import time
 
 import streamlit as st
 
-from processor import process_data
+from core.processor import process_data
 from ui import render_results
 
 

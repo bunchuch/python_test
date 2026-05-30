@@ -4,7 +4,7 @@ from io import BytesIO
 import pandas as pd
 import streamlit as st
 
-from excel_utils import apply_excel_styles
+from data.excel_utils import apply_excel_styles
 
 _DATE_COL_OPTIONS = [
     "PNRCreateDate",
@@ -134,7 +134,7 @@ def render(db_available: bool, query_fn, get_years_fn) -> None:
         with xl_col:
             st.markdown("#### Export")
             raw = BytesIO()
-            from config import HEADERS_44
+            from core.config import HEADERS_44
             style_df = df[[c for c in HEADERS_44 if c in df.columns]]
             style_df.to_excel(raw, index=False, engine="openpyxl")
             styled_xl = apply_excel_styles(raw, style_df)

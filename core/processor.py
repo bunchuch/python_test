@@ -2,8 +2,8 @@ import re
 
 import pandas as pd
 
-from config import HEADERS_44, PNR_RECORD_TYPES, TICKET_RECORD_TYPES
-from handlers import HANDLERS, get_airline_from_ticket, is_valid_ticket
+from core.config import HEADERS_44, PNR_RECORD_TYPES, TICKET_RECORD_TYPES
+from core.handlers import HANDLERS, get_airline_from_ticket, is_valid_ticket
 
 
 def process_data(uploaded_files):

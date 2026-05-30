@@ -1,13 +1,10 @@
 import streamlit as st
 
-import page_processor
-import page_guide
-import page_database
-import page_query
+from views import page_processor, page_guide, page_database, page_query
 from ui import PAGE_CSS, render_navbar, render_upload_sidebar
 
 try:
-    from db import save_to_db, test_connection, query_data, get_available_years
+    from data.db import save_to_db, test_connection, query_data, get_available_years
     DB_AVAILABLE = True
 except ImportError:
     DB_AVAILABLE = False
