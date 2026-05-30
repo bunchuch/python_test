@@ -12,6 +12,22 @@ except ImportError:
 
 st.set_page_config(page_title="Sabre Mapper", page_icon="✈️", layout="wide")
 st.markdown(PAGE_CSS, unsafe_allow_html=True)
+st.markdown(
+    """
+    <div class='mobile-block'>
+        <div style='font-size:56px;margin-bottom:16px;'>🖥️</div>
+        <div style='font-size:22px;font-weight:800;color:#1F4E79;margin-bottom:10px;'>
+            Desktop Only
+        </div>
+        <div style='font-size:14px;color:#64748B;max-width:280px;line-height:1.6;'>
+            This application is designed for desktop use.<br>
+            Please open it on a <strong>laptop or desktop computer</strong>
+            for the full experience.
+        </div>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
 
 if "page" not in st.session_state:
     st.session_state["page"] = "processor"

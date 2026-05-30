@@ -38,6 +38,32 @@ _FOLDER_INJECT = """
 
 PAGE_CSS = """
 <style>
+/* ── Mobile blocker — covers the entire app on small screens ─────────────── */
+.mobile-block {
+    display: none;
+}
+@media (max-width: 900px) {
+    .mobile-block {
+        display: flex !important;
+        position: fixed;
+        inset: 0;
+        z-index: 999999;
+        background: #F8FAFD;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 32px 24px;
+        pointer-events: all;
+    }
+    /* Hide everything behind the block */
+    [data-testid="stAppViewContainer"],
+    [data-testid="stHeader"],
+    section[data-testid="stSidebar"] {
+        visibility: hidden !important;
+    }
+}
+
 /* Page titles — slightly smaller than Streamlit default */
 h1 {
     font-size: 20px !important;
