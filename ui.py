@@ -56,7 +56,6 @@ PAGE_CSS = """
         padding: 32px 24px;
         pointer-events: all;
     }
-    /* Hide everything behind the block */
     [data-testid="stAppViewContainer"],
     [data-testid="stHeader"],
     section[data-testid="stSidebar"] {
@@ -64,31 +63,43 @@ PAGE_CSS = """
     }
 }
 
-/* Page titles — slightly smaller than Streamlit default */
-h1 {
-    font-size: 20px !important;
-}
+/* ── Page headings — fluid scaling via clamp(min, viewport, max) ─────────── */
+h1 { font-size: clamp(16px, 1.4vw, 22px) !important; }
+h2 { font-size: clamp(14px, 1.2vw, 19px) !important; }
+h3 { font-size: clamp(13px, 1.1vw, 17px) !important; }
 
-/* White header bar */
+/* ── White top header bar ─────────────────────────────────────────────────── */
 [data-testid="stHeader"] {
     background: #ffffff !important;
     border-bottom: 1px solid #e8eaed;
     box-shadow: 0 2px 8px rgba(0,0,0,0.06);
 }
 
-/* Nav buttons — shared base */
+/* ── Main content container — fluid horizontal padding ───────────────────── */
+[data-testid="stAppViewBlockContainer"] {
+    padding-left:  clamp(1rem, 2vw, 3rem) !important;
+    padding-right: clamp(1rem, 2vw, 3rem) !important;
+}
+
+/* ── Sidebar — constrained width so it never becomes too wide or too narrow ─ */
+section[data-testid="stSidebar"] {
+    min-width: 220px !important;
+    max-width: 280px !important;
+}
+
+/* ── Nav buttons — shared base ───────────────────────────────────────────── */
 div[data-testid="stHorizontalBlock"] div.stButton button {
     background: transparent !important;
     border: none !important;
     border-radius: 0 !important;
     box-shadow: none !important;
     white-space: nowrap !important;
-    font-size: 12px !important;
+    font-size: clamp(10px, 0.85vw, 13px) !important;
     height: 34px !important;
-    padding: 6px 10px !important;
+    padding: 6px clamp(6px, 0.7vw, 12px) !important;
 }
 
-/* Inactive */
+/* Inactive nav */
 div[data-testid="stHorizontalBlock"] div.stButton button[kind="secondary"] {
     color: #666 !important;
     font-weight: 500 !important;
@@ -97,34 +108,40 @@ div[data-testid="stHorizontalBlock"] div.stButton button[kind="secondary"]:hover
     color: #1F4E79 !important;
 }
 
-/* Active — text highlight only, no fill */
+/* Active nav — underline only, no fill */
 div[data-testid="stHorizontalBlock"] div.stButton button[kind="primary"] {
     color: #1F4E79 !important;
     font-weight: 700 !important;
     border-bottom: 2px solid #1F4E79 !important;
-    font-size: 12px;
 }
 
-/* Big upload drop zone */
+/* ── Upload drop zone ─────────────────────────────────────────────────────── */
 [data-testid="stFileUploaderDropzone"] {
     border: 1.5px dashed #2E86C1 !important;
     border-radius: 10px !important;
-    # background: linear-gradient(145deg, #eaf4ff, #f5f9ff) !important;
-    padding: 40px 20px !important;
-    min-height: 180px !important;
+    padding: clamp(20px, 3vh, 40px) 20px !important;
+    min-height: clamp(120px, 14vh, 180px) !important;
 }
 [data-testid="stFileUploaderDropzoneInstructions"] span {
-    font-size: 12px !important;
+    font-size: clamp(11px, 0.9vw, 13px) !important;
     color: #1F4E79 !important;
     font-weight: 600 !important;
 }
 
-/* Hide the Upload browse button — dropzone area stays clickable */
+/* Hide the Browse button — dropzone stays clickable */
 [data-testid="stFileUploaderDropzone"] button {
     display: none !important;
 }
 
-/* Nested tabs inside pages (Database config tabs, etc.) */
+/* ── Metric cards — fluid value and label text ───────────────────────────── */
+[data-testid="stMetricValue"] {
+    font-size: clamp(16px, 1.6vw, 26px) !important;
+}
+[data-testid="stMetricLabel"] {
+    font-size: clamp(11px, 0.85vw, 13px) !important;
+}
+
+/* ── Nested tabs (Database config, etc.) ─────────────────────────────────── */
 div[data-testid="stTabs"] div[data-baseweb="tab-list"] {
     border-bottom: 2px solid #eee;
 }
@@ -134,8 +151,7 @@ div[data-testid="stTabs"] button[data-baseweb="tab"][aria-selected="true"] {
     border-bottom: 2px solid #1F4E79 !important;
 }
 
-/* ── Toolbar action buttons: Excel download + Save popover ─────────────────── */
-/* Force horizontal layout (icon left, text right), 12 px */
+/* ── Toolbar action buttons: Excel download + Save popover ───────────────── */
 [data-testid="stDownloadButton"] button,
 [data-testid="stPopover"] > div > button {
     display: inline-flex !important;
@@ -146,7 +162,7 @@ div[data-testid="stTabs"] button[data-baseweb="tab"][aria-selected="true"] {
     height: 30px !important;
     padding: 0 10px !important;
     white-space: nowrap !important;
-    font-size: 12px !important;
+    font-size: clamp(11px, 0.85vw, 13px) !important;
     border-radius: 6px !important;
 }
 [data-testid="stDownloadButton"] button > div,
@@ -158,10 +174,37 @@ div[data-testid="stTabs"] button[data-baseweb="tab"][aria-selected="true"] {
 }
 [data-testid="stDownloadButton"] button p,
 [data-testid="stPopover"] > div > button p {
-    font-size: 12px !important;
+    font-size: clamp(11px, 0.85vw, 13px) !important;
     margin: 0 !important;
     line-height: 1 !important;
     white-space: nowrap !important;
+}
+
+/* ── Small laptop breakpoint (1024 – 1280 px) ────────────────────────────── */
+@media (max-width: 1280px) {
+    [data-testid="stAppViewBlockContainer"] {
+        padding-left:  1rem !important;
+        padding-right: 1rem !important;
+    }
+    section[data-testid="stSidebar"] {
+        min-width: 200px !important;
+        max-width: 240px !important;
+    }
+}
+
+/* ── Large monitor breakpoint (≥ 1920 px) ────────────────────────────────── */
+@media (min-width: 1920px) {
+    [data-testid="stAppViewBlockContainer"] {
+        padding-left:  3.5rem !important;
+        padding-right: 3.5rem !important;
+    }
+    section[data-testid="stSidebar"] {
+        min-width: 260px !important;
+        max-width: 320px !important;
+    }
+    h1 { font-size: 24px !important; }
+    h2 { font-size: 21px !important; }
+    h3 { font-size: 18px !important; }
 }
 </style>
 """

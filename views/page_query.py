@@ -72,13 +72,11 @@ def render(db_available: bool, query_fn, get_years_fn) -> None:
     elif mode == "Date Range":
         with fc3:
             default_from = date.today() - timedelta(days=30)
-            dr = st.date_input(
-                "Date range",
-                value=(default_from, date.today()),
-                format="YYYY-MM-DD",
-            )
-            if isinstance(dr, (list, tuple)) and len(dr) == 2:
-                date_from, date_to = dr
+            from_col, to_col = st.columns(2)
+            with from_col:
+                date_from = st.date_input("From", value=default_from, format="YYYY-MM-DD")
+            with to_col:
+                date_to = st.date_input("To", value=date.today(), format="YYYY-MM-DD")
 
     # ── Query button ───────────────────────────────────────────────────────────
     st.markdown("")
