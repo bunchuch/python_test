@@ -113,7 +113,10 @@ div[data-testid="stHorizontalBlock"] div.stButton button[kind="primary"] {
     color: #1F4E79 !important;
     font-weight: 700 !important;
     border-bottom: 2px solid #1F4E79 !important;
+
 }
+
+#test
 
 /* ── Upload drop zone ─────────────────────────────────────────────────────── */
 [data-testid="stFileUploaderDropzone"] {
