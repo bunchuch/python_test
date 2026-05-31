@@ -116,7 +116,7 @@ div[data-testid="stHorizontalBlock"] div.stButton button[kind="primary"] {
 
 }
 
-#test
+
 
 /* ── Upload drop zone ─────────────────────────────────────────────────────── */
 [data-testid="stFileUploaderDropzone"] {
