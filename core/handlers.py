@@ -35,28 +35,69 @@ def parse_pcc(s):
     return s.split("/")[0].strip()[:6]
 
 
+# ── Date normalisation ─────────────────────────────────────────────────────────
+# Sabre dates arrive as "25JAN25" or "25JAN2025"; normalise to "YYYY-MM-DD".
+_MON = {"JAN":1,"FEB":2,"MAR":3,"APR":4,"MAY":5,"JUN":6,
+        "JUL":7,"AUG":8,"SEP":9,"OCT":10,"NOV":11,"DEC":12}
+
+def normalize_date(val: str) -> str:
+    if not val:
+        return val
+    val = val.strip()
+    if re.match(r'^\d{4}-\d{2}-\d{2}$', val):
+        return val                             # already ISO
+    m = re.match(r'^(\d{1,2})([A-Z]{3})(\d{2,4})$', val.upper())
+    if m:
+        day, mon, yr = m.group(1), m.group(2), m.group(3)
+        month = _MON.get(mon)
+        if month:
+            if len(yr) == 2:
+                yr = ("20" if int(yr) < 70 else "19") + yr
+            try:
+                return f"{int(yr):04d}-{month:02d}-{int(day):02d}"
+            except ValueError:
+                pass
+    return val                                 # return as-is if unrecognised
+
+
+# ── Fare currency codes to skip (passenger type / non-currency 3-letter codes) ─
+_FARE_SKIP = {
+    "ADT", "CHD", "INF", "INS", "CCR", "NET", "BSP", "PTA",
+    "MPD", "MCO", "EMD", "TAX", "YQ",  "YR",  "XT",
+}
+
 # ── Record handlers ────────────────────────────────────────────────────────────
 
 def handle_18(cols, row):
     row["PrimaryDocNbr"] = g(cols, 3)
-    safe_set(row, "PNRCreateDate",    g(cols, 2))
-    safe_set(row, "VCRCreateDate",    g(cols, 5))
+    safe_set(row, "PNRCreateDate",    normalize_date(g(cols, 2)))
+    safe_set(row, "VCRCreateDate",    normalize_date(g(cols, 5)))
     safe_set(row, "Airline",          g(cols, 10))
     safe_set(row, "CreateIATANr",     g(cols, 6))
     safe_set(row, "CustomerFullName", g(cols, 15))
+    safe_set(row, "TourCode",         g(cols, 14))
 
     agent = g(cols, 9)
     if agent:
         row["AgentSine"] = agent
 
+    # Take the FIRST valid fare amount and the FIRST valid 3-letter currency found
+    # scanning cols 27-54.  Stopping on first complete pair avoids picking up
+    # tax totals or other trailing numeric/alpha fields that appear later.
     fare_amount = ""
     fare_currency = ""
     for i in range(27, min(len(cols), 55)):
         val = g(cols, i)
-        if re.match(r'^[A-Z]{3}$', val) and val not in ("ADT", "CHD", "INF", "INS", "CCR", "NET"):
+        if not fare_currency and re.match(r'^[A-Z]{3}$', val) and val not in _FARE_SKIP:
             fare_currency = val
-        if re.match(r'^\d+\.\d+$', val) and float(val) > 0:
-            fare_amount = val
+        if not fare_amount and re.match(r'^\d+\.\d+$', val):
+            try:
+                if float(val) > 0:
+                    fare_amount = val
+            except ValueError:
+                pass
+        if fare_amount and fare_currency:
+            break
 
     if fare_amount:
         try:
@@ -70,18 +111,20 @@ def handle_18(cols, row):
 
 def handle_19(cols, row):
     safe_set(row, "PrimaryDocNbr",        g(cols, 3))
-    row["CouponStatus"] = g(cols, 8)      # col 8 = CTRL/USED/OPEN/VOID/RFND/EXCH
+    row["CouponStatus"] = g(cols, 8)      # CTRL/USED/OPEN/VOID/RFND/EXCH
     safe_set(row, "ClassOfService",       g(cols, 20))
     safe_set(row, "FltNo",                g(cols, 12))
     safe_set(row, "CouponSeqNbr",         g(cols, 7))
-    safe_set(row, "ServiceStartDate",     g(cols, 16))
+    safe_set(row, "ServiceStartDate",     normalize_date(g(cols, 16)))
     safe_set(row, "ServiceStartTime",     g(cols, 17))
+    safe_set(row, "ServiceEndDate",       normalize_date(g(cols, 18)))
+    safe_set(row, "ServiceEndTime",       g(cols, 19))
     dep = g(cols, 13); arr = g(cols, 14)
     safe_set(row, "ServiceStartCity",         dep)
     safe_set(row, "ServiceEndCity",           arr)
     safe_set(row, "Sector",                   dep + arr if dep and arr else "")
     safe_set(row, "FlownFlightNbr",           g(cols, 12))
-    safe_set(row, "FlownServiceStartDate",    g(cols, 16))
+    safe_set(row, "FlownServiceStartDate",    normalize_date(g(cols, 16)))
     safe_set(row, "FlownServiceStartCity",    dep)
     safe_set(row, "FlownServiceEndCity",      arr)
     safe_set(row, "FlownClassOfService",      g(cols, 20))
@@ -89,8 +132,8 @@ def handle_19(cols, row):
 
 
 def handle_00(cols, row):
-    safe_set(row, "PNRCreateDate",  g(cols, 2))
-    safe_set(row, "VCRCreateDate",  g(cols, 3))
+    safe_set(row, "PNRCreateDate",  normalize_date(g(cols, 2)))
+    safe_set(row, "VCRCreateDate",  normalize_date(g(cols, 3)))
     safe_set(row, "TTYAirlineCode", g(cols, 4))
     safe_set(row, "Airline",        g(cols, 13))
     safe_set(row, "PCC",            parse_pcc(g(cols, 11)))
@@ -111,16 +154,16 @@ def handle_01(cols, row):
     safe_set(row, "ServiceEndCity",        arr)
     safe_set(row, "Sector",                dep + arr if dep and arr else "")
     safe_set(row, "City",                  AIRPORT_CITY.get(dep, dep))
-    safe_set(row, "ServiceStartDate",      g(cols, 26))
+    safe_set(row, "ServiceStartDate",      normalize_date(g(cols, 26)))
     safe_set(row, "ServiceStartTime",      g(cols, 27))
-    safe_set(row, "ServiceEndDate",        g(cols, 29))
+    safe_set(row, "ServiceEndDate",        normalize_date(g(cols, 29)))
     safe_set(row, "ServiceEndTime",        g(cols, 30))
     safe_set(row, "FlownFlightNbr",        g(cols, 15))
-    safe_set(row, "FlownServiceStartDate", g(cols, 26))
+    safe_set(row, "FlownServiceStartDate", normalize_date(g(cols, 26)))
     safe_set(row, "FlownServiceStartCity", dep)
     safe_set(row, "FlownServiceEndCity",   arr)
     safe_set(row, "FlownClassOfService",   g(cols, 5))
-    safe_set(row, "FlownFlightOrigDate",   g(cols, 26))
+    safe_set(row, "FlownFlightOrigDate",   normalize_date(g(cols, 26)))
 
 
 def handle_16(cols, row):
@@ -141,13 +184,13 @@ def handle_11(cols, row):
 
 def handle_07(cols, row):
     nat = g(cols, 11)
-    safe_set(row, "Nationality",       nat)
-    safe_set(row, "NationalName",      NAT_MAP.get(nat, nat))
-    safe_set(row, "Country",           nat)
-    safe_set(row, "CountryName",       COUNTRY_MAP.get(nat, nat))
-    safe_set(row, "RegionName",        REGION_MAP.get(nat, ""))
+    safe_set(row, "Nationality",  nat)
+    safe_set(row, "NationalName", NAT_MAP.get(nat, nat))
+    # Country/CountryName/RegionName are intentionally NOT set here —
+    # those fields reflect origin-country (from handle_16/ResODFlight),
+    # not the passenger's passport nationality.
     first = g(cols, 12); last = g(cols, 14)
-    safe_set(row, "CustomerFullName",  f"{last}/{first}".strip("/"))
+    safe_set(row, "CustomerFullName", f"{last}/{first}".strip("/"))
 
 
 def handle_04(cols, row):

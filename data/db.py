@@ -170,3 +170,182 @@ def query_data(
         return df, ""
     except SQLAlchemyError as e:
         return pd.DataFrame(), str(e)
+
+
+# ── Schema bootstrap ──────────────────────────────────────────────────────────
+
+def ensure_schema() -> None:
+    """Create users/system_logs tables if absent; seed one admin if table is empty."""
+    from data.migrations import get_ddl
+    from core.crypto import hash_pw
+
+    engine = get_engine()
+    with engine.begin() as conn:
+        for stmt in get_ddl(DB_MODE):
+            conn.execute(text(stmt))
+
+    with engine.connect() as conn:
+        count = conn.execute(text("SELECT COUNT(*) FROM users")).scalar() or 0
+
+    if count == 0:
+        pw_hash = hash_pw("sabre2025")
+        with engine.begin() as conn:
+            conn.execute(
+                text("INSERT INTO users (username, password_hash, role) VALUES (:u, :p, :r)"),
+                {"u": "admin", "p": pw_hash, "r": "admin"},
+            )
+
+
+# ── User CRUD ─────────────────────────────────────────────────────────────────
+
+def get_user(username: str) -> dict | None:
+    try:
+        engine = get_engine()
+        with engine.connect() as conn:
+            row = conn.execute(
+                text("SELECT id, username, password_hash, role, is_active "
+                     "FROM users WHERE username = :u"),
+                {"u": username},
+            ).fetchone()
+        if row:
+            return {
+                "id": row[0], "username": row[1], "password_hash": row[2],
+                "role": row[3], "is_active": bool(row[4]),
+            }
+        return None
+    except SQLAlchemyError:
+        return None
+
+
+def update_last_login(username: str) -> None:
+    try:
+        engine = get_engine()
+        expr = "datetime('now')" if DB_MODE == "sqlite" else "GETUTCDATE()"
+        with engine.begin() as conn:
+            conn.execute(
+                text(f"UPDATE users SET last_login = {expr} WHERE username = :u"),
+                {"u": username},
+            )
+    except SQLAlchemyError:
+        pass
+
+
+def list_users() -> list[dict]:
+    try:
+        engine = get_engine()
+        with engine.connect() as conn:
+            rows = conn.execute(
+                text("SELECT id, username, role, is_active, created_at, last_login "
+                     "FROM users ORDER BY id")
+            ).fetchall()
+        return [
+            {
+                "id": r[0], "username": r[1], "role": r[2],
+                "is_active": bool(r[3]), "created_at": r[4], "last_login": r[5],
+            }
+            for r in rows
+        ]
+    except SQLAlchemyError:
+        return []
+
+
+def create_user(username: str, password: str, role: str) -> tuple[bool, str]:
+    from core.crypto import hash_pw
+    try:
+        engine = get_engine()
+        with engine.begin() as conn:
+            conn.execute(
+                text("INSERT INTO users (username, password_hash, role) VALUES (:u, :p, :r)"),
+                {"u": username.strip(), "p": hash_pw(password), "r": role},
+            )
+        return True, f"User '{username.strip()}' created successfully."
+    except SQLAlchemyError as e:
+        return False, str(e)
+
+
+def toggle_user_active(user_id: int, active: bool) -> tuple[bool, str]:
+    try:
+        engine = get_engine()
+        with engine.begin() as conn:
+            conn.execute(
+                text("UPDATE users SET is_active = :v WHERE id = :id"),
+                {"v": 1 if active else 0, "id": user_id},
+            )
+        return True, "User " + ("enabled." if active else "disabled.")
+    except SQLAlchemyError as e:
+        return False, str(e)
+
+
+def delete_user(user_id: int) -> tuple[bool, str]:
+    try:
+        engine = get_engine()
+        with engine.begin() as conn:
+            conn.execute(text("DELETE FROM users WHERE id = :id"), {"id": user_id})
+        return True, "User deleted."
+    except SQLAlchemyError as e:
+        return False, str(e)
+
+
+def change_password(username: str, new_password: str) -> tuple[bool, str]:
+    from core.crypto import hash_pw
+    try:
+        engine = get_engine()
+        with engine.begin() as conn:
+            conn.execute(
+                text("UPDATE users SET password_hash = :p WHERE username = :u"),
+                {"p": hash_pw(new_password), "u": username},
+            )
+        return True, f"Password for '{username}' updated."
+    except SQLAlchemyError as e:
+        return False, str(e)
+
+
+def change_role(user_id: int, new_role: str) -> tuple[bool, str]:
+    if new_role not in ("user", "admin", "dev"):
+        return False, f"Invalid role '{new_role}'."
+    try:
+        engine = get_engine()
+        with engine.begin() as conn:
+            conn.execute(
+                text("UPDATE users SET role = :r WHERE id = :id"),
+                {"r": new_role, "id": user_id},
+            )
+        return True, f"Role updated to '{new_role}'."
+    except SQLAlchemyError as e:
+        return False, str(e)
+
+
+# ── System logs ───────────────────────────────────────────────────────────────
+
+def log_event(event_type: str, username: str = "", detail: str = "") -> None:
+    """Append a row to system_logs. Silent on failure so it never blocks the UI."""
+    try:
+        engine = get_engine()
+        with engine.begin() as conn:
+            conn.execute(
+                text("INSERT INTO system_logs (event_type, username, detail) "
+                     "VALUES (:e, :u, :d)"),
+                {"e": event_type[:50], "u": username[:64], "d": detail[:500]},
+            )
+    except SQLAlchemyError:
+        pass
+
+
+def get_logs(limit: int = 200) -> list[dict]:
+    try:
+        engine = get_engine()
+        if DB_MODE == "sqlite":
+            sql = text(
+                "SELECT ts, event_type, username, detail "
+                "FROM system_logs ORDER BY id DESC LIMIT :n"
+            )
+        else:
+            sql = text(
+                "SELECT TOP(:n) ts, event_type, username, detail "
+                "FROM system_logs ORDER BY id DESC"
+            )
+        with engine.connect() as conn:
+            rows = conn.execute(sql, {"n": limit}).fetchall()
+        return [{"ts": r[0], "event": r[1], "user": r[2], "detail": r[3]} for r in rows]
+    except SQLAlchemyError:
+        return []

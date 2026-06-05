@@ -72,7 +72,7 @@ h3 { font-size: clamp(13px, 1.1vw, 17px) !important; }
 [data-testid="stHeader"] {
     background: #ffffff !important;
     border-bottom: 1px solid #e8eaed;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    box-shadow: none !important;
 }
 
 /* ── Main content container — fluid horizontal padding ───────────────────── */
@@ -215,20 +215,46 @@ div[data-testid="stTabs"] button[data-baseweb="tab"][aria-selected="true"] {
 
 # ── Navbar ─────────────────────────────────────────────────────────────────────
 def render_navbar(active_page: str) -> None:
-    nav_pages = [
-        ("processor", "Processor", ":material/flight:"),
-        ("query",     "Query",     ":material/search:"),
-        ("guide",     "Guide",     ":material/menu_book:"),
-        ("database",  "Database",  ":material/storage:"),
-    ]
-    cols = st.columns([1.2, 1.0, 1.0, 1.2, 5.6])
-    for i, (key, label, icon) in enumerate(nav_pages):
+    from core.rbac import allowed_nav, current_role, ROLE_BADGE
+    from core.auth import do_logout
+
+    nav   = allowed_nav()
+    role  = current_role()
+    badge_label, badge_color = ROLE_BADGE.get(role, ("User", "#2E86C1"))
+    username = st.session_state.get("_username", "")
+
+    n = len(nav)
+    # Allocate 1.1 width per nav button; remainder goes to the spacer column
+    spacer = max(1.0, 10.5 - n * 1.1 - 1.7 - 0.8)
+    cols   = st.columns([1.1] * n + [spacer, 1.7, 0.8])
+
+    for i, (key, label, icon) in enumerate(nav):
         with cols[i]:
             btn_type = "primary" if key == active_page else "secondary"
             if st.button(label, icon=icon, key=f"nav_{key}",
                          use_container_width=True, type=btn_type):
                 st.session_state["page"] = key
                 st.rerun()
+
+    # Username + role badge
+    with cols[n + 1]:
+        st.markdown(
+            f"<p style='text-align:right;margin:0;padding-top:8px;"
+            f"font-size:12px;color:#555;white-space:nowrap;'>"
+            f":material/person: <b>{username}</b>&nbsp;"
+            f"<span style='background:{badge_color};color:#fff;"
+            f"border-radius:4px;padding:1px 7px;font-size:10px;"
+            f"font-weight:700;vertical-align:middle;'>{badge_label}</span></p>",
+            unsafe_allow_html=True,
+        )
+
+    # Logout button
+    with cols[n + 2]:
+        if st.button("", icon=":material/logout:", key="nav_logout",
+                     use_container_width=True, help="Sign out"):
+            do_logout()
+            st.rerun()
+
     st.markdown(
         "<hr style='margin:4px 0 20px 0;border:none;border-top:1px solid #e8eaed;'>",
         unsafe_allow_html=True,

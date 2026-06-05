@@ -6,28 +6,26 @@ from core.processor import process_data
 from ui import render_results
 
 
-# ── Public entry point ────────────────────────────────────────────────────────
-
 def render(uploaded_files: list, run: bool, db_available: bool, real_save_fn) -> None:
     action = st.session_state.get("busy_action", "")
 
-    # ── Execute phase: do the heavy work FIRST, before any other UI ───────────
+    # ── Execute phase ─────────────────────────────────────────────────────────
     if st.session_state.get("busy"):
         if action == "process":
             _exec_process()
         elif action == "save":
             _exec_save(real_save_fn)
-        return  # nothing else renders while busy
+        return
 
-    # ── Trigger phase: capture button click, rerun into execute phase ─────────
+    # ── Trigger phase ─────────────────────────────────────────────────────────
     if run and uploaded_files:
         n = len(uploaded_files)
         st.session_state.update({
-            "busy":            True,
-            "busy_action":     "process",
-            "busy_msg":        f"Processing {n} file{'s' if n > 1 else ''}…",
-            "_pending_files":  uploaded_files,
-            "last_action":     None,   # clear previous badge
+            "busy":           True,
+            "busy_action":    "process",
+            "busy_msg":       f"Processing {n} file{'s' if n > 1 else ''}…",
+            "_pending_files": uploaded_files,
+            "last_action":    None,
         })
         st.rerun()
         return
@@ -45,11 +43,68 @@ def render(uploaded_files: list, run: bool, db_available: bool, real_save_fn) ->
         render_results(
             df=st.session_state["df"],
             db_available=db_available,
-            save_fn=_save_trigger,   # triggers phase instead of calling DB directly
+            save_fn=_save_trigger,
         )
     else:
-        st.info("Upload one or more Sabre files on the left, then click **Process Files**.",
-                icon=":material/info:")
+        _render_empty_state()
+
+
+# ── Empty state ───────────────────────────────────────────────────────────────
+
+def _render_empty_state() -> None:
+    st.markdown("<div style='margin-top:8px;'></div>", unsafe_allow_html=True)
+
+    steps = [
+        ("📁", "Upload Files",
+         "Drop <code>.txt</code>, <code>.dat</code>, or <code>.log</code> "
+         "Sabre export files in the left sidebar."),
+        ("⚙️", "Process",
+         "Click <b>Process Files</b>. The two-pass engine maps every record "
+         "to the correct ticket row automatically."),
+        ("📊", "Review",
+         "Browse the <b>44-column</b> output table. Use the page controls "
+         "to navigate large result sets."),
+        ("⬇️", "Export / Save",
+         "Download a formatted <b>Excel</b> file or push the data directly "
+         "to the configured database."),
+    ]
+
+    cols = st.columns(4)
+    for i, (emoji, title, desc) in enumerate(steps):
+        with cols[i]:
+            st.markdown(
+                f"""
+                <div style="border:1px solid #c8dff5;border-radius:12px;
+                            padding:24px 18px;
+                            background:linear-gradient(150deg,#eef6ff,#f8fcff);
+                            text-align:center;min-height:170px;box-sizing:border-box;">
+                  <div style="font-size:30px;margin-bottom:10px;">{emoji}</div>
+                  <div style="font-size:10px;font-weight:700;color:#2E86C1;
+                              letter-spacing:.8px;margin-bottom:6px;">STEP {i + 1}</div>
+                  <div style="font-size:13px;font-weight:700;color:#1F4E79;
+                              margin-bottom:10px;">{title}</div>
+                  <div style="font-size:12px;color:#556;line-height:1.65;">{desc}</div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+    st.markdown("<br>", unsafe_allow_html=True)
+    st.info(
+        "Use the **sidebar on the left** to upload your Sabre files, "
+        "then click **Process Files** to begin.",
+        icon=":material/arrow_back:",
+    )
+
+    with st.expander(":material/lightbulb: Tips & Notes"):
+        st.markdown("""
+- **Multiple files** — upload several days of exports at once; the engine merges them into one result
+- **Folder mode** — switch to *Folder* in the sidebar to select all files from a directory at once
+- **Accepted formats** — `.txt`, `.dat`, and `.log` all work if they contain pipe-delimited Sabre records
+- **File size** — up to **200 MB** per upload; 7 days of typical agency data processes in 2–10 seconds
+- **Deduplication** — each 13-digit ticket number appears exactly once; data from multiple files is merged
+- **Date format** — all dates are normalised to `YYYY-MM-DD` automatically for database compatibility
+""")
 
 
 # ── Execute helpers ───────────────────────────────────────────────────────────
@@ -68,8 +123,14 @@ def _exec_process() -> None:
         "last_action":  "process",
         "last_elapsed": elapsed,
         "last_rows":    len(df),
-        "tbl_page":     0,        # always start at page 1 for fresh data
+        "tbl_page":     0,
     })
+    try:
+        from data.db import log_event
+        username = st.session_state.get("_username", "")
+        log_event("file_import", username, f"files={len(files)} rows={len(df)} elapsed={elapsed}s")
+    except Exception:
+        pass
     st.rerun()
 
 
@@ -86,19 +147,25 @@ def _exec_save(real_save_fn) -> None:
         )
     elapsed = round(time.perf_counter() - t0, 1)
     st.session_state.update({
-        "busy":        False,
-        "busy_action": "",
-        "last_action": "save",
+        "busy":         False,
+        "busy_action":  "",
+        "last_action":  "save",
         "last_elapsed": elapsed,
-        "save_result": (ok, msg),
+        "save_result":  (ok, msg),
     })
+    try:
+        from data.db import log_event
+        username = st.session_state.get("_username", "")
+        log_event(
+            "db_save", username,
+            f"table={params.get('table')} mode={params.get('if_exists')} ok={ok}",
+        )
+    except Exception:
+        pass
     st.rerun()
 
 
-# ── Save trigger (passed as save_fn to render_results) ────────────────────────
-
 def _save_trigger(df, table, if_exists, batch_label) -> None:
-    """Sets up the execute phase for saving; called by the Save button in the UI."""
     st.session_state.update({
         "busy":        True,
         "busy_action": "save",
@@ -117,9 +184,21 @@ def _save_trigger(df, table, if_exists, batch_label) -> None:
 
 def _busy_banner() -> None:
     msg = st.session_state.get("busy_msg", "Working…")
-    st.warning(
-        f"**{msg}**  \nPlease wait — all actions are locked until this completes.",
-        icon=":material/hourglass_empty:",
+    st.markdown(
+        f"""
+        <div style="border:1px solid #f5c842;border-radius:10px;
+                    background:#fffbea;padding:20px 24px;
+                    display:flex;align-items:center;gap:14px;margin-bottom:16px;">
+          <span style="font-size:28px;">⏳</span>
+          <div>
+            <div style="font-size:14px;font-weight:700;color:#7a5800;">{msg}</div>
+            <div style="font-size:12px;color:#9a7000;margin-top:2px;">
+              Please wait — all actions are locked until this completes.
+            </div>
+          </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
     )
 
 
@@ -131,12 +210,13 @@ def _render_last_result_badge() -> None:
 
     if last == "process":
         rows = st.session_state.get("last_rows", 0)
-        st.success(f"Processed **{rows:,}** rows — :material/timer: {t} s",
-                   icon=":material/check_circle:")
-
+        st.success(
+            f"Processed **{rows:,}** rows in {t} s",
+            icon=":material/check_circle:",
+        )
     elif last == "save":
         ok, msg = st.session_state.get("save_result", (False, ""))
         if ok:
-            st.success(f"{msg} — :material/timer: {t} s", icon=":material/save:")
+            st.success(f"{msg} — {t} s", icon=":material/save:")
         else:
             st.error(msg, icon=":material/error:")
