@@ -12,7 +12,7 @@ def render(db_available: bool, test_connection_fn) -> None:
             "SQLAlchemy is not installed. Run the command below, then restart the app.",
             icon=":material/error:",
         )
-        st.code("pip install sqlalchemy", language="bash")
+        st.code("pip install sqlalchemy pyodbc", language="bash")
         return
 
     # ── Role gate ─────────────────────────────────────────────────────────────
@@ -23,52 +23,29 @@ def render(db_available: bool, test_connection_fn) -> None:
         )
         return
 
-    from data.db import DB_MODE, SQLITE_PATH, DB_CONFIG
+    from data.db import DB_CONFIG
 
-    # ── Active mode banner ────────────────────────────────────────────────────
-    if DB_MODE == "sqlite":
-        st.markdown(
-            f"""
-            <div style="border:1px solid #b6d7f5;border-radius:12px;
-                        background:linear-gradient(135deg,#e8f4fd,#f4faff);
-                        padding:20px 24px;display:flex;align-items:center;gap:16px;
-                        margin-bottom:4px;">
-              <span style="font-size:36px;">🧪</span>
-              <div>
-                <div style="font-size:14px;font-weight:700;color:#1F4E79;">
-                  SQLite — Testing Mode
-                </div>
-                <div style="font-size:12px;color:#555;margin-top:4px;line-height:1.6;">
-                  Data is stored in <code>{SQLITE_PATH}</code> inside the project folder.<br>
-                  No server or driver required — perfect for local development.
-                </div>
-              </div>
+    db  = DB_CONFIG.get("database", "—")
+    srv = DB_CONFIG.get("server",   "—")
+    st.markdown(
+        f"""
+        <div style="border:1px solid #a8d5b5;border-radius:12px;
+                    background:linear-gradient(135deg,#e8f8ee,#f4fff7);
+                    padding:20px 24px;display:flex;align-items:center;gap:16px;
+                    margin-bottom:4px;">
+          <span style="font-size:36px;">🏭</span>
+          <div>
+            <div style="font-size:14px;font-weight:700;color:#1a4731;">
+              SQL Server
             </div>
-            """,
-            unsafe_allow_html=True,
-        )
-    else:
-        db  = DB_CONFIG.get("database", "—")
-        srv = DB_CONFIG.get("server",   "—")
-        st.markdown(
-            f"""
-            <div style="border:1px solid #a8d5b5;border-radius:12px;
-                        background:linear-gradient(135deg,#e8f8ee,#f4fff7);
-                        padding:20px 24px;display:flex;align-items:center;gap:16px;
-                        margin-bottom:4px;">
-              <span style="font-size:36px;">🏭</span>
-              <div>
-                <div style="font-size:14px;font-weight:700;color:#1a4731;">
-                  SQL Server — Production Mode
-                </div>
-                <div style="font-size:12px;color:#333;margin-top:4px;line-height:1.6;">
-                  Database <b>{db}</b> on server <b>{srv}</b>
-                </div>
-              </div>
+            <div style="font-size:12px;color:#333;margin-top:4px;line-height:1.6;">
+              Database <b>{db}</b> on server <b>{srv}</b>
             </div>
-            """,
-            unsafe_allow_html=True,
-        )
+          </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
     st.markdown("<div style='height:8px;'></div>", unsafe_allow_html=True)
 
@@ -79,12 +56,12 @@ def render(db_available: bool, test_connection_fn) -> None:
     if has_perm("view_logs"):
         tab_labels.append("📋  System Logs")
 
-    tabs      = st.tabs(tab_labels)
-    tab_idx   = 0
+    tabs    = st.tabs(tab_labels)
+    tab_idx = 0
 
     # ── Tab: Connection & Config ──────────────────────────────────────────────
     with tabs[tab_idx]:
-        _render_connection_tab(test_connection_fn, DB_MODE, SQLITE_PATH, DB_CONFIG)
+        _render_connection_tab(test_connection_fn, DB_CONFIG)
     tab_idx += 1
 
     # ── Tab: User Management (admin + dev) ────────────────────────────────────
@@ -103,7 +80,7 @@ def render(db_available: bool, test_connection_fn) -> None:
 # Connection & Config
 # ─────────────────────────────────────────────────────────────────────────────
 
-def _render_connection_tab(test_fn, db_mode, sqlite_path, db_config) -> None:
+def _render_connection_tab(test_fn, db_config) -> None:
     st.markdown("### :material/power: Connection")
 
     btn_col, result_col = st.columns([1, 3])
@@ -131,64 +108,32 @@ def _render_connection_tab(test_fn, db_mode, sqlite_path, db_config) -> None:
     st.markdown("---")
     st.markdown("### :material/settings: Current Configuration")
 
-    if db_mode == "sqlite":
-        c1, c2 = st.columns(2)
-        c1.metric("Mode", "SQLite")
-        c2.metric("File", sqlite_path)
-    else:
-        auth = "SQL Server Auth" if db_config.get("username") else "Windows Auth"
-        c1, c2, c3, c4 = st.columns(4)
-        c1.metric("Mode",     "SQL Server")
-        c2.metric("Server",   db_config.get("server",   "—"))
-        c3.metric("Database", db_config.get("database", "—"))
-        c4.metric("Auth",     auth)
+    auth = "SQL Server Auth" if db_config.get("username") else "Windows Auth"
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("Mode",     "SQL Server")
+    c2.metric("Server",   db_config.get("server",   "—"))
+    c3.metric("Database", db_config.get("database", "—"))
+    c4.metric("Auth",     auth)
 
     st.markdown("---")
-    st.markdown("### :material/swap_horiz: Switch Database Mode")
-    st.caption("Edit `data/db.py` and change `DB_MODE`, then restart the app.")
+    st.markdown("### :material/settings_ethernet: Connection Details")
+    st.caption("Override any value via environment variables before starting the app.")
 
-    tab_sqlite, tab_sqlserver = st.tabs([
-        "🧪  SQLite  (testing / local)",
-        "🏭  SQL Server  (production)",
-    ])
-
-    with tab_sqlite:
-        with st.container(border=True):
-            st.markdown(
-                "**Zero setup** — the database file is created automatically on first save. "
-                "Best for local testing and development."
-            )
-            st.code(
-                'DB_MODE     = "sqlite"\n'
-                'SQLITE_PATH = "sabre_test.db"   # path relative to working directory',
-                language="python",
-            )
-
-    with tab_sqlserver:
-        with st.container(border=True):
-            st.markdown(
-                "Requires **`pyodbc`** and the Microsoft ODBC Driver for SQL Server."
-            )
-            install_col, _ = st.columns([1, 2])
-            with install_col:
-                st.code("pip install pyodbc", language="bash")
-            st.markdown("Then set your connection details in `data/db.py`:")
-            st.code(
-                'DB_MODE = "sqlserver"\n\n'
-                'DB_CONFIG = {\n'
-                '    "server":   "YOUR_SERVER",\n'
-                '    "database": "SabreDB",\n'
-                '    "driver":   "ODBC Driver 17 for SQL Server",\n'
-                '    "username": "",   # leave blank for Windows Authentication\n'
-                '    "password": "",\n'
-                '}',
-                language="python",
-            )
-            st.info(
-                "Download the ODBC driver from Microsoft: "
-                "https://learn.microsoft.com/en-us/sql/connect/odbc/download-odbc-driver-for-sql-server",
-                icon=":material/open_in_new:",
-            )
+    with st.container(border=True):
+        st.markdown("**Environment variables**")
+        st.code(
+            "DB_SERVER=YOUR_SERVER\\INSTANCE\n"
+            "DB_NAME=SabreDB\n"
+            "DB_DRIVER=ODBC Driver 17 for SQL Server\n"
+            "DB_USER=        # leave blank for Windows Authentication\n"
+            "DB_PASSWORD=",
+            language="bash",
+        )
+        st.info(
+            "Download the ODBC driver from Microsoft: "
+            "https://learn.microsoft.com/en-us/sql/connect/odbc/download-odbc-driver-for-sql-server",
+            icon=":material/open_in_new:",
+        )
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -220,7 +165,6 @@ def _render_users_tab() -> None:
 
     # ── User table with inline role badges ────────────────────────────────────
     if users:
-        # Build HTML table for richer display
         rows_html = ""
         for u in users:
             rc = _ROLE_COLORS.get(u["role"], "#888")
@@ -315,7 +259,6 @@ def _render_users_tab() -> None:
         if not sel:
             return
 
-        # Current role display
         rc = _ROLE_COLORS.get(sel["role"], "#888")
         st.markdown(
             f"Current role: <span style='background:{rc};color:#fff;border-radius:4px;"

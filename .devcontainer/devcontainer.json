@@ -1,33 +1,38 @@
 {
-  "name": "Python 3",
-  // Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
-  "image": "mcr.microsoft.com/devcontainers/python:1-3.11-bookworm",
+  "name": "Sabre Mapper (MSSQL)",
+  "dockerComposeFile": "docker-compose.yml",
+  "service": "app",
+  "workspaceFolder": "/workspace",
+
   "customizations": {
-    "codespaces": {
-      "openFiles": [
-        "README.md",
-        "main.py"
-      ]
-    },
     "vscode": {
-      "settings": {},
+      "settings": {
+        "python.defaultInterpreterPath": "/usr/local/bin/python"
+      },
       "extensions": [
         "ms-python.python",
-        "ms-python.vscode-pylance"
+        "ms-python.vscode-pylance",
+        "ms-mssql.mssql"
       ]
     }
   },
-  "updateContentCommand": "[ -f packages.txt ] && sudo apt update && sudo apt upgrade -y && sudo xargs apt install -y <packages.txt; [ -f requirements.txt ] && pip3 install --user -r requirements.txt; pip3 install --user streamlit; echo '✅ Packages installed and Requirements met'",
+
+  // Create SabreDB, then bootstrap schema + seed admin user
+  "postCreateCommand": "python .devcontainer/create-db.py && python -c \"from data.db import ensure_schema; ensure_schema()\"",
+
   "postAttachCommand": {
-    "server": "streamlit run main.py --server.enableCORS false --server.enableXsrfProtection false"
+    "streamlit": "streamlit run main.py --server.enableCORS false --server.enableXsrfProtection false"
   },
+
   "portsAttributes": {
     "8501": {
-      "label": "Application",
+      "label": "Streamlit App",
       "onAutoForward": "openPreview"
+    },
+    "1433": {
+      "label": "SQL Server",
+      "onAutoForward": "ignore"
     }
   },
-  "forwardPorts": [
-    8501
-  ]
+  "forwardPorts": [8501, 1433]
 }

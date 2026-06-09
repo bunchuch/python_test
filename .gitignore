@@ -1,6 +1,47 @@
-upload_files
+# Python
 __pycache__/
-*.pyc
-*.db
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+*.egg
+.eggs/
 dist/
 build/
+wheels/
+
+# Virtual environment
+venv/
+.venv/
+env/
+.env/
+
+# Environment variables / secrets
+.env
+.env.*
+*.env
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Uploads / user data
+upload_files/
+
+# IDE
+.vscode/
+.idea/
+*.suo
+*.user
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+
+# Streamlit
+.streamlit/secrets.toml

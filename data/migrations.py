@@ -1,33 +1,9 @@
 """
 DDL migration statements for the users and system_logs tables.
 
-These are idempotent (CREATE IF NOT EXISTS / IF NOT EXISTS guard) so they can
-be run on every startup without side-effects.
+These are idempotent (IF NOT EXISTS guard) so they can be run on every
+startup without side-effects.
 """
-
-# ── SQLite dialect ─────────────────────────────────────────────────────────────
-_SQLITE: list[str] = [
-    """
-    CREATE TABLE IF NOT EXISTS users (
-        id            INTEGER PRIMARY KEY AUTOINCREMENT,
-        username      TEXT    NOT NULL UNIQUE,
-        password_hash TEXT    NOT NULL,
-        role          TEXT    NOT NULL DEFAULT 'user',
-        is_active     INTEGER NOT NULL DEFAULT 1,
-        created_at    TEXT    DEFAULT (datetime('now')),
-        last_login    TEXT    NULL
-    );
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS system_logs (
-        id         INTEGER PRIMARY KEY AUTOINCREMENT,
-        ts         TEXT    DEFAULT (datetime('now')),
-        event_type TEXT    NULL,
-        username   TEXT    NULL,
-        detail     TEXT    NULL
-    );
-    """,
-]
 
 # ── SQL Server dialect ─────────────────────────────────────────────────────────
 _MSSQL: list[str] = [
@@ -66,6 +42,5 @@ _MSSQL: list[str] = [
 ]
 
 
-def get_ddl(db_mode: str) -> list[str]:
-    """Return the list of DDL statements for *db_mode* ('sqlite' | 'sqlserver')."""
-    return _SQLITE if db_mode == "sqlite" else _MSSQL
+def get_ddl() -> list[str]:
+    return _MSSQL

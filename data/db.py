@@ -1,25 +1,22 @@
 """
-Database helpers — supports SQLite (testing) and SQL Server (production).
-
-Set DB_MODE = "sqlite"    → uses a local file, no driver needed.
-Set DB_MODE = "sqlserver" → uses DB_CONFIG below, requires pyodbc.
+Database helpers — SQL Server via pyodbc.
 """
+
+import os
+import urllib.parse
 
 import pandas as pd
 from sqlalchemy import create_engine, text
 from sqlalchemy.exc import SQLAlchemyError
 
-# ── Mode switch ───────────────────────────────────────────────────────────────
-DB_MODE = "sqlite"          # "sqlite" | "sqlserver"
-SQLITE_PATH = "sabre_test.db"   # relative to the working directory
-
-# ── SQL Server config (only used when DB_MODE = "sqlserver") ──────────────────
+# ── SQL Server config ─────────────────────────────────────────────────────────
+# All values can be overridden via environment variables (set in docker-compose).
 DB_CONFIG = {
-    "server":   "localhost",
-    "database": "SabreDB",
-    "driver":   "ODBC Driver 17 for SQL Server",
-    "username": "",          # blank = Windows Auth
-    "password": "",
+    "server":   os.environ.get("DB_SERVER", r"DESKTOP-59TH5MU\K6_SQLEXPRESS"),
+    "database": os.environ.get("DB_NAME", "SabreDB"),
+    "driver":   os.environ.get("DB_DRIVER", "ODBC Driver 17 for SQL Server"),
+    "username": os.environ.get("DB_USER", ""),    # blank = Windows Auth
+    "password": os.environ.get("DB_PASSWORD", ""),
 }
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -30,46 +27,31 @@ _DATE_COLS = [
 ]
 
 
-# ── Dialect helpers ───────────────────────────────────────────────────────────
-
-def _q(col: str) -> str:
-    """Quote a column name for the active dialect."""
-    return f'"{col}"' if DB_MODE == "sqlite" else f"[{col}]"
-
-
-def _year_expr(col: str) -> str:
-    return f"strftime('%Y', {_q(col)})" if DB_MODE == "sqlite" else f"YEAR({_q(col)})"
-
-
-def _month_expr(col: str) -> str:
-    if DB_MODE == "sqlite":
-        return f"CAST(strftime('%m', {_q(col)}) AS INTEGER)"
-    return f"MONTH({_q(col)})"
-
-
-def _date_cast(col: str) -> str:
-    return f"date({_q(col)})" if DB_MODE == "sqlite" else f"CAST({_q(col)} AS DATE)"
-
-
 # ── Engine ────────────────────────────────────────────────────────────────────
 
 def _conn_str() -> str:
     cfg = DB_CONFIG
-    driver = cfg["driver"].replace(" ", "+")
     if cfg["username"]:
-        return (
-            f"mssql+pyodbc://{cfg['username']}:{cfg['password']}"
-            f"@{cfg['server']}/{cfg['database']}?driver={driver}"
+        odbc = (
+            f"DRIVER={{{cfg['driver']}}};"
+            f"SERVER={cfg['server']};"
+            f"DATABASE={cfg['database']};"
+            f"UID={cfg['username']};"
+            f"PWD={cfg['password']};"
+            "Encrypt=yes;TrustServerCertificate=yes;"
         )
-    return (
-        f"mssql+pyodbc://@{cfg['server']}/{cfg['database']}"
-        f"?driver={driver}&trusted_connection=yes"
-    )
+    else:
+        odbc = (
+            f"DRIVER={{{cfg['driver']}}};"
+            f"SERVER={cfg['server']};"
+            f"DATABASE={cfg['database']};"
+            "Trusted_Connection=yes;"
+            "Encrypt=yes;TrustServerCertificate=yes;"
+        )
+    return f"mssql+pyodbc:///?odbc_connect={urllib.parse.quote_plus(odbc)}"
 
 
 def get_engine():
-    if DB_MODE == "sqlite":
-        return create_engine(f"sqlite:///{SQLITE_PATH}")
     return create_engine(_conn_str(), fast_executemany=True)
 
 
@@ -79,8 +61,6 @@ def test_connection() -> tuple[bool, str]:
     try:
         with get_engine().connect() as conn:
             conn.execute(text("SELECT 1"))
-        if DB_MODE == "sqlite":
-            return True, f"SQLite OK — {SQLITE_PATH}"
         return True, f"Connected to [{DB_CONFIG['database']}] on {DB_CONFIG['server']}"
     except SQLAlchemyError as e:
         return False, str(e)
@@ -103,11 +83,8 @@ def save_to_db(
             out.insert(1, "BatchLabel", batch_label)
 
         engine = get_engine()
-        kwargs: dict = dict(index=False, if_exists=if_exists, chunksize=500)
-        if DB_MODE == "sqlserver":
-            kwargs["schema"] = "dbo"
-
-        out.to_sql(table, engine, **kwargs)
+        out.to_sql(table, engine, index=False, if_exists=if_exists,
+                   chunksize=500, schema="dbo")
         return True, f"{len(out):,} rows saved to [{table}]"
     except SQLAlchemyError as e:
         return False, str(e)
@@ -119,12 +96,10 @@ def get_available_years(
 ) -> list[int]:
     try:
         engine = get_engine()
-        yr = _year_expr(date_col)
-        col = _q(date_col)
         sql = text(
-            f"SELECT DISTINCT {yr} AS yr "
+            f"SELECT DISTINCT YEAR([{date_col}]) AS yr "
             f"FROM {table} "
-            f"WHERE {col} IS NOT NULL "
+            f"WHERE [{date_col}] IS NOT NULL "
             f"ORDER BY yr DESC"
         )
         with engine.connect() as conn:
@@ -148,21 +123,21 @@ def query_data(
         params: dict = {}
 
         if year:
-            conditions.append(f"{_year_expr(date_col)} = :yr")
-            params["yr"] = str(year) if DB_MODE == "sqlite" else int(year)
+            conditions.append(f"YEAR([{date_col}]) = :yr")
+            params["yr"] = int(year)
 
         if months:
             placeholders = ", ".join(f":m{i}" for i in range(len(months)))
-            conditions.append(f"{_month_expr(date_col)} IN ({placeholders})")
+            conditions.append(f"MONTH([{date_col}]) IN ({placeholders})")
             for i, m in enumerate(months):
                 params[f"m{i}"] = int(m)
 
         if date_from:
-            conditions.append(f"{_date_cast(date_col)} >= :df")
+            conditions.append(f"CAST([{date_col}] AS DATE) >= :df")
             params["df"] = str(date_from)
 
         if date_to:
-            conditions.append(f"{_date_cast(date_col)} <= :dt")
+            conditions.append(f"CAST([{date_col}] AS DATE) <= :dt")
             params["dt"] = str(date_to)
 
         where = f"WHERE {' AND '.join(conditions)}" if conditions else ""
@@ -181,7 +156,7 @@ def ensure_schema() -> None:
 
     engine = get_engine()
     with engine.begin() as conn:
-        for stmt in get_ddl(DB_MODE):
+        for stmt in get_ddl():
             conn.execute(text(stmt))
 
     with engine.connect() as conn:
@@ -220,10 +195,9 @@ def get_user(username: str) -> dict | None:
 def update_last_login(username: str) -> None:
     try:
         engine = get_engine()
-        expr = "datetime('now')" if DB_MODE == "sqlite" else "GETUTCDATE()"
         with engine.begin() as conn:
             conn.execute(
-                text(f"UPDATE users SET last_login = {expr} WHERE username = :u"),
+                text("UPDATE users SET last_login = GETUTCDATE() WHERE username = :u"),
                 {"u": username},
             )
     except SQLAlchemyError:
@@ -334,16 +308,10 @@ def log_event(event_type: str, username: str = "", detail: str = "") -> None:
 def get_logs(limit: int = 200) -> list[dict]:
     try:
         engine = get_engine()
-        if DB_MODE == "sqlite":
-            sql = text(
-                "SELECT ts, event_type, username, detail "
-                "FROM system_logs ORDER BY id DESC LIMIT :n"
-            )
-        else:
-            sql = text(
-                "SELECT TOP(:n) ts, event_type, username, detail "
-                "FROM system_logs ORDER BY id DESC"
-            )
+        sql = text(
+            "SELECT TOP(:n) ts, event_type, username, detail "
+            "FROM system_logs ORDER BY id DESC"
+        )
         with engine.connect() as conn:
             rows = conn.execute(sql, {"n": limit}).fetchall()
         return [{"ts": r[0], "event": r[1], "user": r[2], "detail": r[3]} for r in rows]
