@@ -22,8 +22,18 @@ _MONTH_NAMES = {
 
 _PAGE_SIZES = [50, 100, 200, 500]
 
+# Label style matching the screenshot's blue-gray labels
+_LBL = (
+    "font-size:12px;font-weight:600;color:#1a6fff;"
+    "letter-spacing:.3px;margin-bottom:4px;display:block;"
+)
 
-def render(db_available: bool, query_fn, get_years_fn) -> None:
+
+def render(
+    db_available: bool,
+    query_fn,
+    get_years_fn,
+) -> None:
     st.title(":material/search: Query Data")
 
     if not db_available:
@@ -39,73 +49,97 @@ def render(db_available: bool, query_fn, get_years_fn) -> None:
     # ── Filter card ────────────────────────────────────────────────────────────
     with st.container(border=True):
         st.markdown("#### :material/tune: Filter Settings")
+        st.markdown("<div style='height:4px;'></div>", unsafe_allow_html=True)
 
-        row1_left, row1_right = st.columns([2, 2])
-        with row1_left:
+        # Row 1 — table name + date column
+        r1_left, r1_right = st.columns([1, 1], gap="large")
+        with r1_left:
+            st.markdown(f"<span style='{_LBL}'>Table name</span>",
+                        unsafe_allow_html=True)
             table = st.text_input(
-                "Table name",
-                value="SabreReport",
-                placeholder="e.g. SabreReport",
+                "table", value="SabreReport", placeholder="e.g. SabreReport",
+                label_visibility="collapsed",
                 help="The database table to query.",
             )
-        with row1_right:
+        with r1_right:
+            st.markdown(
+                f"<span style='{_LBL}'>Date field to filter on</span>",
+                unsafe_allow_html=True,
+            )
             date_col = st.selectbox(
-                "Date field to filter on",
-                _DATE_COL_OPTIONS,
+                "datecol", _DATE_COL_OPTIONS,
+                label_visibility="collapsed",
                 help="Which date column the filter applies to.",
             )
 
-        st.markdown(
-            "<div style='margin:8px 0 4px;font-size:13px;color:#555;font-weight:600;'>"
-            "Filter by</div>",
-            unsafe_allow_html=True,
-        )
+        st.markdown("<div style='height:6px;'></div>", unsafe_allow_html=True)
+
+        # Row 2 — filter mode segmented control
+        st.markdown(f"<span style='{_LBL}'>Filter by</span>",
+                    unsafe_allow_html=True)
         mode = st.segmented_control(
-            "Filter mode",
+            "mode",
             options=["Year / Month", "Date Range", "All records"],
             default="Year / Month",
             label_visibility="collapsed",
         )
 
+        st.markdown("<div style='height:6px;'></div>", unsafe_allow_html=True)
+
+        # Row 3 — dynamic filter inputs
         year = months = date_from = date_to = None
 
         if mode == "Year / Month":
-            yr_col, mo_col = st.columns([1, 2])
+            yr_col, mo_col = st.columns([1, 2], gap="large")
             with yr_col:
-                years = get_years_fn(table=table, date_col=date_col) if get_years_fn else []
+                st.markdown(f"<span style='{_LBL}'>Year</span>",
+                            unsafe_allow_html=True)
+                years = (
+                    get_years_fn(table=table, date_col=date_col) if get_years_fn else []
+                )
                 if years:
-                    year = st.selectbox("Year", years)
+                    year = st.selectbox("yr", years, label_visibility="collapsed")
                 else:
                     year = st.number_input(
-                        "Year",
-                        min_value=2000,
-                        max_value=date.today().year,
-                        value=date.today().year,
+                        "yr", min_value=2000, max_value=date.today().year,
+                        value=date.today().year, label_visibility="collapsed",
                     )
             with mo_col:
+                st.markdown(f"<span style='{_LBL}'>Month(s)</span>",
+                            unsafe_allow_html=True)
                 selected = st.multiselect(
-                    "Month(s)",
+                    "mo",
                     options=list(range(1, 13)),
                     format_func=lambda m: _MONTH_NAMES[m],
                     default=[],
                     placeholder="Leave empty for all months",
+                    label_visibility="collapsed",
                 )
                 months = selected if selected else None
 
         elif mode == "Date Range":
-            default_from = date.today() - timedelta(days=30)
-            from_col, to_col = st.columns(2)
+            from_col, to_col = st.columns([1, 1], gap="large")
             with from_col:
-                date_from = st.date_input("From", value=default_from, format="YYYY-MM-DD")
+                st.markdown(f"<span style='{_LBL}'>From</span>",
+                            unsafe_allow_html=True)
+                date_from = st.date_input(
+                    "from", value=date.today() - timedelta(days=30),
+                    format="YYYY-MM-DD", label_visibility="collapsed",
+                )
             with to_col:
-                date_to = st.date_input("To", value=date.today(), format="YYYY-MM-DD")
+                st.markdown(f"<span style='{_LBL}'>To</span>",
+                            unsafe_allow_html=True)
+                date_to = st.date_input(
+                    "to", value=date.today(),
+                    format="YYYY-MM-DD", label_visibility="collapsed",
+                )
 
         else:
             st.caption(":material/info: All rows in the table will be returned.")
 
-        st.markdown("<div style='margin-top:8px;'></div>", unsafe_allow_html=True)
+        st.markdown("<div style='height:10px;'></div>", unsafe_allow_html=True)
 
-        # ── Run button (two-phase) ─────────────────────────────────────────────
+        # Run / loading button
         if querying:
             st.button(
                 "Processing data…",
@@ -142,23 +176,23 @@ def render(db_available: bool, query_fn, get_years_fn) -> None:
             st.session_state.pop("query_df", None)
             st.session_state.pop("query_elapsed", None)
         else:
-            st.session_state["query_df"] = df
+            st.session_state["query_df"]      = df
             st.session_state["query_elapsed"] = elapsed
-            st.session_state["q_page"] = 0
-            st.session_state["query_meta"] = {
-                "table":    params.get("table"),
-                "date_col": params.get("date_col"),
-                "mode":     mode,
-                "year":     params.get("year"),
-                "months":   params.get("months"),
+            st.session_state["q_page"]        = 0
+            st.session_state["query_meta"]    = {
+                "table":     params.get("table"),
+                "date_col":  params.get("date_col"),
+                "mode":      mode,
+                "year":      params.get("year"),
+                "months":    params.get("months"),
                 "date_from": str(params.get("date_from") or ""),
                 "date_to":   str(params.get("date_to")   or ""),
             }
             try:
                 from data.db import log_event
-                username = st.session_state.get("_username", "")
                 log_event(
-                    "query_run", username,
+                    "query_run",
+                    st.session_state.get("_username", ""),
                     f"table={params.get('table')} mode={mode} rows={len(df)}",
                 )
             except Exception:
@@ -169,20 +203,48 @@ def render(db_available: bool, query_fn, get_years_fn) -> None:
     if "query_df" not in st.session_state:
         return
 
-    df   = st.session_state["query_df"]
-    meta = st.session_state.get("query_meta", {})
+    df      = st.session_state["query_df"]
+    meta    = st.session_state.get("query_meta", {})
+    elapsed = st.session_state.get("query_elapsed")
 
-    st.markdown("<div style='margin-top:16px;'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='height:18px;'></div>", unsafe_allow_html=True)
 
-    # Metrics strip
-    elapsed     = st.session_state.get("query_elapsed")
-    elapsed_str = f"{elapsed:.2f}s" if elapsed is not None else "—"
-    m1, m2, m3, m4, m5 = st.columns(5)
-    m1.metric("Rows returned",  f"{len(df):,}")
-    m2.metric("Columns",        len(df.columns))
-    m3.metric("Table",          meta.get("table", "—"))
-    m4.metric("Filtered by",    meta.get("date_col", "—"))
-    m5.metric("Query time",     elapsed_str)
+    # Gradient metric cards
+    elapsed_str = f"{elapsed:.2f} s" if elapsed is not None else "—"
+    st.markdown(
+        f"""
+        <div class="fs-metrics">
+            <div class="fs-card">
+                <div class="fs-lbl">Rows Returned</div>
+                <div class="fs-val">{len(df):,}</div>
+            </div>
+            <div class="fs-card">
+                <div class="fs-lbl">Columns</div>
+                <div class="fs-val">{len(df.columns)}</div>
+            </div>
+            <div class="fs-card"
+                 style="background:linear-gradient(135deg,#1a7a44 0%,#27ae60 100%);">
+                <div class="fs-lbl">Table</div>
+                <div class="fs-val" style="font-size:18px;margin-top:4px;">
+                    {meta.get("table", "—")}
+                </div>
+            </div>
+            <div class="fs-card"
+                 style="background:linear-gradient(135deg,#5c2d8a 0%,#8e44ad 100%);">
+                <div class="fs-lbl">Filtered by</div>
+                <div class="fs-val" style="font-size:14px;margin-top:6px;">
+                    {meta.get("date_col", "—")}
+                </div>
+            </div>
+            <div class="fs-card"
+                 style="background:linear-gradient(135deg,#1050c8 0%,#3b82f6 100%);">
+                <div class="fs-lbl">Query Time</div>
+                <div class="fs-val">{elapsed_str}</div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
     if df.empty:
         st.warning(
@@ -191,9 +253,7 @@ def render(db_available: bool, query_fn, get_years_fn) -> None:
         )
         return
 
-    st.markdown("---")
-
-    # ── Excel prep (full dataset) ──────────────────────────────────────────────
+    # ── Excel prep ────────────────────────────────────────────────────────────
     from core.config import HEADERS_44
     raw      = BytesIO()
     style_df = df[[c for c in HEADERS_44 if c in df.columns]]
@@ -201,7 +261,7 @@ def render(db_available: bool, query_fn, get_years_fn) -> None:
     styled_xl = apply_excel_styles(raw, style_df)
     fname     = _build_filename(meta)
 
-    # ── Toolbar: title left, download right ───────────────────────────────────
+    # ── Toolbar ───────────────────────────────────────────────────────────────
     title_col, _, dl_col = st.columns([5, 2, 1.2])
     with title_col:
         st.markdown("### Results")
@@ -238,17 +298,17 @@ def render(db_available: bool, query_fn, get_years_fn) -> None:
     end_idx   = min(start_idx + page_size, total_rows)
     page_df   = df.iloc[start_idx:end_idx]
 
-    sz_col, prev_col, info_col, next_col, rows_col = st.columns([1.6, 0.55, 2.2, 0.55, 2.2])
+    sz_col, prev_col, info_col, next_col, rows_col = st.columns(
+        [1.6, 0.55, 2.2, 0.55, 2.2]
+    )
 
     with sz_col:
         def _reset_q_page():
             st.session_state["q_page"] = 0
         st.selectbox(
-            "Rows/page",
-            _PAGE_SIZES,
+            "Rows/page", _PAGE_SIZES,
             index=_PAGE_SIZES.index(page_size) if page_size in _PAGE_SIZES else 1,
-            key="q_size",
-            on_change=_reset_q_page,
+            key="q_size", on_change=_reset_q_page,
             label_visibility="collapsed",
         )
 
@@ -292,8 +352,8 @@ def _build_filename(meta: dict) -> str:
         tag = f"{yr}{'_' + mo if mo else ''}"
     elif mode == "Date Range":
         tag = (
-            f"{(meta.get('date_from') or '').replace('-','')}"
-            f"_{(meta.get('date_to') or '').replace('-','')}"
+            f"{(meta.get('date_from') or '').replace('-', '')}"
+            f"_{(meta.get('date_to') or '').replace('-', '')}"
         )
     else:
         tag = "all"

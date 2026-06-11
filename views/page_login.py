@@ -7,8 +7,8 @@ from core.auth import check_credentials, do_login
 _BTN_JS = """
 <script>
 (function() {
-    var BG   = '#1a2535';
-    var HBG  = '#2c3e57';
+    var BG   = '#1a6fff';
+    var HBG  = '#0055d4';
     var sel  = 'button[kind="primary"], [data-testid="stBaseButton-primary"] button';
 
     function applyStyles() {
@@ -87,7 +87,7 @@ def render() -> None:
         .si-title {
             font-size: 26px;
             font-weight: 800;
-            color: #1a2535;
+            color: #1a6fff;
             letter-spacing: -.5px;
             margin-bottom: 4px;
         }
@@ -107,8 +107,8 @@ def render() -> None:
             transition: border-color .18s, box-shadow .18s !important;
         }
         [data-testid="stTextInput"] > div > div:focus-within {
-            border-color: #7c83e5 !important;
-            box-shadow: 0 0 0 3px rgba(124,131,229,.15) !important;
+            border-color: #1a6fff !important;
+            box-shadow: 0 0 0 3px rgba(26,111,255,.15) !important;
         }
         [data-testid="stTextInput"] input {
             font-size: 14px !important;
@@ -149,7 +149,12 @@ def render() -> None:
             ok, role = check_credentials(username, password)
             if ok:
                 do_login(username, role)
-                st.rerun()
+                # Do NOT call st.rerun() here.  ls_set() needs a full browser render
+                # cycle to write the token to localStorage before the iframe is removed.
+                # The component's "ok" response automatically triggers a rerun, and by
+                # then the token is already in localStorage.
+                st.info("Signing in…")
+                st.stop()
             else:
                 st.error("Invalid credentials. Please try again.", icon=":material/lock:")
 

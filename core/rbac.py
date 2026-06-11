@@ -9,6 +9,7 @@ PERMISSIONS: dict[str, frozenset] = {
     "access_processor": frozenset({"admin", "dev"}),
     "access_guide":     frozenset({"admin", "dev"}),
     "access_database":  frozenset({"admin", "dev"}),
+    "access_users":     frozenset({"admin", "dev"}),
     "access_query":     frozenset({"user", "admin", "dev"}),
     # Actions
     "import_files":     frozenset({"admin", "dev"}),
@@ -30,12 +31,14 @@ NAV_PAGES: dict[str, list] = {
         ("processor", "Processor", ":material/flight:"),
         ("query",     "Query",     ":material/search:"),
         ("guide",     "Guide",     ":material/menu_book:"),
+        ("users",     "Users",     ":material/group:"),
         ("database",  "Database",  ":material/storage:"),
     ],
     "dev": [
         ("processor", "Processor", ":material/flight:"),
         ("query",     "Query",     ":material/search:"),
         ("guide",     "Guide",     ":material/menu_book:"),
+        ("users",     "Users",     ":material/group:"),
         ("database",  "Database",  ":material/storage:"),
     ],
 }

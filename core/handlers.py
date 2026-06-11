@@ -73,9 +73,14 @@ def handle_18(cols, row):
     safe_set(row, "PNRCreateDate",    normalize_date(g(cols, 2)))
     safe_set(row, "VCRCreateDate",    normalize_date(g(cols, 5)))
     safe_set(row, "Airline",          g(cols, 10))
-    safe_set(row, "CreateIATANr",     g(cols, 6))
     safe_set(row, "CustomerFullName", g(cols, 15))
-    safe_set(row, "TourCode",         g(cols, 14))
+    _tc_raw = re.sub(r'^(IT|BT|IND)[/\-]?', '', g(cols, 14).strip(), flags=re.IGNORECASE).strip().upper()
+    _is_date = bool(re.match(
+        r'^(\d{1,2}[A-Z]{3}\d{2,4}|\d{4}-\d{2}-\d{2}|\d{2}/\d{2}/\d{4})$',
+        _tc_raw,
+    ))
+    if _tc_raw and not _is_date:
+        safe_set(row, "TourCode", _tc_raw)
 
     agent = g(cols, 9)
     if agent:
@@ -128,7 +133,8 @@ def handle_19(cols, row):
     safe_set(row, "FlownServiceStartCity",    dep)
     safe_set(row, "FlownServiceEndCity",      arr)
     safe_set(row, "FlownClassOfService",      g(cols, 20))
-    safe_set(row, "FareBasisCode",            g(cols, 21))
+    fbc = g(cols, 21).strip().upper().split("/")[0].strip()
+    safe_set(row, "FareBasisCode", fbc)
 
 
 def handle_00(cols, row):
@@ -137,11 +143,13 @@ def handle_00(cols, row):
     safe_set(row, "TTYAirlineCode", g(cols, 4))
     safe_set(row, "Airline",        g(cols, 13))
     safe_set(row, "PCC",            parse_pcc(g(cols, 11)))
-    safe_set(row, "CreateIATANr",   g(cols, 18))
+    safe_set(row, "BookingCode",    g(cols, 1))
+    iata = re.sub(r'\D', '', g(cols, 18))
+    if iata:
+        safe_set(row, "CreateIATANr", iata.zfill(8))
 
 
 def handle_01(cols, row):
-    safe_set(row, "BookingCode",          g(cols, 5))
     safe_set(row, "ClassOfService",       g(cols, 5))
     safe_set(row, "SegmentTypeCode",      g(cols, 11))
     safe_set(row, "FltNo",                g(cols, 15))
