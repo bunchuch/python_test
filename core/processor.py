@@ -72,6 +72,12 @@ def process_data(uploaded_files):
     # ── Build DataFrame ───────────────────────────────────────────────────────
     df = pd.DataFrame.from_dict(master, orient="index").reindex(columns=HEADERS_44)
 
+    # Force string columns that must never be cast to numeric
+    for _col in ("CreateIATANr", "PrimaryDocNbr", "FltNo", "OperatingFlightNbr",
+                 "FlownFlightNbr", "CouponSeqNbr", "PCC"):
+        if _col in df.columns:
+            df[_col] = df[_col].where(df[_col].isna(), df[_col].astype(str))
+
     for idx in df.index:
         if is_valid_ticket(idx) and pd.isna(df.at[idx, "PrimaryDocNbr"]):
             df.at[idx, "PrimaryDocNbr"] = idx

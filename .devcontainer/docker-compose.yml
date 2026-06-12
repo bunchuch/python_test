@@ -1,0 +1,40 @@
+version: "3.8"
+
+services:
+  app:
+    build:
+      context: ..
+      dockerfile: .devcontainer/Dockerfile
+    volumes:
+      - ..:/workspace:cached
+    working_dir: /workspace
+    ports:
+      - "8501:8501"
+    environment:
+      DB_MODE: sqlserver
+      DB_SERVER: mssql
+      DB_NAME: SabreDB
+      DB_DRIVER: ODBC Driver 17 for SQL Server
+      DB_USER: sa
+      DB_PASSWORD: "Sabre@2025!"
+    depends_on:
+      mssql:
+        condition: service_healthy
+    command: sleep infinity
+
+  mssql:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    ports:
+      - "1433:1433"
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "Sabre@2025!"
+      MSSQL_PID: Developer
+    healthcheck:
+      test: >
+        /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "Sabre@2025!"
+        -Q "SELECT 1" -No -l 5
+      interval: 10s
+      timeout: 8s
+      retries: 15
+      start_period: 30s
