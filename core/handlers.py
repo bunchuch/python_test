@@ -68,23 +68,56 @@ _FARE_SKIP = {
 
 # ── Record handlers ────────────────────────────────────────────────────────────
 
+_DATE_PAT = re.compile(
+    r'^(\d{1,2}[A-Z]{3}\d{2,4}'   # 25JAN26 / 25JAN2026
+    r'|\d{4}-\d{2}-\d{2}'          # 2026-01-25
+    r'|\d{2}/\d{2}/\d{4}'          # 01/25/2026
+    r'|\d{1,2}-[A-Z]{3}-\d{2,4}'  # 25-JAN-26
+    r'|\d{8}'                       # 20260125
+    r')$',
+    re.IGNORECASE,
+)
+
+# PCC pattern: exactly 4 alphanumeric chars, at least one letter (not all digits)
+_PCC_PAT = re.compile(r'^[A-Z0-9]{4}$')
+# rec18 columns already assigned to other fields — skip during PCC scan
+_PCC_SKIP_COLS = frozenset({2, 3, 5, 6, 9, 10, 14, 15})
+# YYYYMMDD date disguised as 8 digits — exclude from IATA scan
+_IATA_DATE_PAT = re.compile(r'^(19|20)\d{2}(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])$')
+
+
 def handle_18(cols, row):
     row["PrimaryDocNbr"] = g(cols, 3)
     safe_set(row, "PNRCreateDate",    normalize_date(g(cols, 2)))
     safe_set(row, "VCRCreateDate",    normalize_date(g(cols, 5)))
     safe_set(row, "Airline",          g(cols, 10))
     safe_set(row, "CustomerFullName", g(cols, 15))
-    _tc_raw = re.sub(r'^(IT|BT|IND)[/\-]?', '', g(cols, 14).strip(), flags=re.IGNORECASE).strip().upper()
-    _is_date = bool(re.match(
-        r'^(\d{1,2}[A-Z]{3}\d{2,4}|\d{4}-\d{2}-\d{2}|\d{2}/\d{2}/\d{4})$',
-        _tc_raw,
-    ))
-    if _tc_raw and not _is_date:
-        safe_set(row, "TourCode", _tc_raw)
+
+    tc = re.sub(r'^(IT|BT|IND)[/\-]?', '', g(cols, 14).strip(), flags=re.IGNORECASE).strip().upper()
+    if tc and not _DATE_PAT.match(tc):
+        safe_set(row, "TourCode", tc)
 
     agent = g(cols, 9)
     if agent:
-        row["AgentSine"] = agent
+        safe_set(row, "AgentSine", agent)
+
+    # Fallback: scan rec18 cols 4-25 for 8-digit IATA office number.
+    # Skip values that look like YYYYMMDD dates (col[4] is a date field).
+    for _i in range(4, min(len(cols), 26)):
+        _v = re.sub(r'\D', '', g(cols, _i))
+        if len(_v) == 8 and not _IATA_DATE_PAT.match(_v):
+            safe_set(row, "CreateIATANr", _v)
+            break
+
+    # PCC fallback for group bookings where rec00[11] is empty:
+    # scan for first 4-char alphanumeric value (at least one letter) in unassigned cols
+    for _i in range(4, min(len(cols), 26)):
+        if _i in _PCC_SKIP_COLS:
+            continue
+        _v = g(cols, _i)
+        if _PCC_PAT.match(_v) and not _v.isdigit():
+            safe_set(row, "PCC", _v)
+            break
 
     # Take the FIRST valid fare amount and the FIRST valid 3-letter currency found
     # scanning cols 27-54.  Stopping on first complete pair avoids picking up
@@ -142,18 +175,38 @@ def handle_00(cols, row):
     safe_set(row, "VCRCreateDate",  normalize_date(g(cols, 3)))
     safe_set(row, "TTYAirlineCode", g(cols, 4))
     safe_set(row, "Airline",        g(cols, 13))
-    safe_set(row, "PCC",            parse_pcc(g(cols, 11)))
-    safe_set(row, "BookingCode",    g(cols, 1))
-    iata = re.sub(r'\D', '', g(cols, 18))
-    if iata:
-        safe_set(row, "CreateIATANr", iata.zfill(8))
+    safe_set(row, "BookingCode",     g(cols, 1))
+    safe_set(row, "PCC",            parse_pcc(g(cols, 11)))  # from HDQ string
+    safe_set(row, "PCC",            g(cols, 10))             # direct PCC fallback
+    _country = g(cols, 5)
+    safe_set(row, "Country",     _country)
+    safe_set(row, "CountryName", COUNTRY_MAP.get(_country, _country) if _country else "")
+    safe_set(row, "RegionName",  REGION_MAP.get(_country, "") if _country else "")
+    # HDQ string: HDQ[prefix][PCC]/[AgentSine]/[IATAOfficeNo8]
+    hdq = g(cols, 11)
+    if hdq:
+        clean = hdq.replace("HDQ1B", "").replace("HDQ", "")
+        parts = [p.strip() for p in clean.split("/")]
+        if len(parts) >= 2 and parts[1]:
+            safe_set(row, "AgentSine", parts[1])
+        if len(parts) >= 3:
+            iata = re.sub(r'\D', '', parts[2])
+            if len(iata) >= 8:
+                safe_set(row, "CreateIATANr", iata[:8])
+    # IATA fallbacks for when HDQ is absent or empty
+    iata18 = re.sub(r'\D', '', g(cols, 18))
+    if len(iata18) == 8:
+        safe_set(row, "CreateIATANr", iata18)
+    iata30 = re.sub(r'\D', '', g(cols, 30))
+    if len(iata30) == 8 and iata30 != '00000000':
+        safe_set(row, "CreateIATANr", iata30)
 
 
 def handle_01(cols, row):
     safe_set(row, "ClassOfService",       g(cols, 5))
     safe_set(row, "SegmentTypeCode",      g(cols, 11))
     safe_set(row, "FltNo",                g(cols, 15))
-    safe_set(row, "MarketingAirlineCode", g(cols, 16))
+    safe_set(row, "MarketingAirlineCode", g(cols, 19))
     safe_set(row, "OperatingFlightNbr",   g(cols, 15))
     safe_set(row, "OperatingAirlineCode", g(cols, 17))
     safe_set(row, "Airline",              g(cols, 17))
