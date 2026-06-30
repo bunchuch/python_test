@@ -184,6 +184,7 @@ def handle_00(cols, row):
     safe_set(row, "RegionName",  REGION_MAP.get(_country, "") if _country else "")
     # HDQ string: HDQ[prefix][PCC]/[AgentSine]/[IATAOfficeNo8]
     hdq = g(cols, 11)
+    safe_set(row, "BookingType", "NORMAL" if hdq else "GROUP")
     if hdq:
         clean = hdq.replace("HDQ1B", "").replace("HDQ", "")
         parts = [p.strip() for p in clean.split("/")]

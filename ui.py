@@ -73,7 +73,13 @@ section[data-testid="stSidebar"] {
     min-width: 235px !important;
     max-width: 265px !important;
 }
-[data-testid="stSidebarContent"] { padding: 20px 14px !important; }
+[data-testid="stSidebarContent"] {
+    padding: 20px 14px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    height: 100vh !important;
+}
+.sidebar-spacer { flex: 1 !important; min-height: 16px; }
 
 /* ── Sidebar buttons — nav items ───────────────────────────────────────────── */
 section[data-testid="stSidebar"] .stButton button {
@@ -249,7 +255,7 @@ def render_navbar(active_page: str) -> None:
         except Exception:
             st.markdown(
                 "<div style='font-size:20px;font-weight:800;color:#1a2535;"
-                "padding:6px 2px 10px;'>✈ Sabre Mapper</div>",
+                "padding:6px 2px 10px;'>Sabre Mapper</div>",
                 unsafe_allow_html=True,
             )
 
@@ -263,22 +269,24 @@ def render_navbar(active_page: str) -> None:
                 st.session_state["page"] = key
                 st.rerun()
 
+        # Push user section to bottom
+        st.markdown('<div class="sidebar-spacer"></div>', unsafe_allow_html=True)
+        st.divider()
 
-    # ── Top-right user bar (main content) ──────────────────────────────────────
-    _, info_col, btn_col = st.columns([7.5, 1.8, 0.5])
-    with info_col:
+        # User info
         st.markdown(
-            f"<div style='text-align:right;padding-top:4px;'>"
-            f"<span style='font-size:13px;font-weight:600;color:#1a2535;'>"
-            f"👤 {username}</span>"
-            f"&nbsp;&nbsp;<span style='background:{badge_color};color:#fff;"
+            f"<div style='padding:4px 2px 8px;'>"
+            f"<div style='font-size:13px;font-weight:600;color:#1a2535;margin-bottom:5px;'>"
+            f"👤 {username}</div>"
+            f"<span style='background:{badge_color};color:#fff;"
             f"border-radius:5px;padding:2px 9px;font-size:11px;font-weight:700;'>"
             f"{badge_label}</span></div>",
             unsafe_allow_html=True,
         )
-    with btn_col:
-        if st.button("", icon=":material/logout:", key="nav_logout",
-                     use_container_width=True, help="Sign out"):
+
+        # Sign-out button
+        if st.button("Sign Out", icon=":material/logout:", type="primary", key="nav_logout",
+                     use_container_width=True):
             do_logout()
             st.rerun()
 

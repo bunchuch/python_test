@@ -7,7 +7,7 @@ HEADERS_44 = [
     "ServiceEndTime", "FlownFlightNbr", "FlownServiceStartDate", "FlownServiceStartCity",
     "FlownServiceEndCity", "FlownClassOfService", "FlownFlightOrigDate", "ServiceStartCity",
     "ServiceEndCity", "OD", "Kind", "Origin", "Destination", "CountryName",
-    "RegionName", "Nationality", "NationalName", "TTYAirlineCode"
+    "RegionName", "Nationality", "NationalName", "TTYAirlineCode", "BookingType"
 ]
 
 # 18=TkDocument, 19=TkCoupon, 20=TkTax, 21=TkTaxDetail, 22=TkPayment,

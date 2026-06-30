@@ -63,14 +63,9 @@ def process_data(uploaded_files):
                     master[tkt] = dict.fromkeys(HEADERS_44, None)
                 handler(cols, master[tkt])
 
-    # ── PNR-only rows (no linked ticket) ──────────────────────────────────────
-    pnrs_with_tickets = set(pnr_to_tickets.keys())
-    for pnr, row_data in pnr_data.items():
-        if pnr not in pnrs_with_tickets and any(v for v in row_data.values()):
-            master[pnr] = row_data
-
-    # ── Build DataFrame ───────────────────────────────────────────────────────
-    df = pd.DataFrame.from_dict(master, orient="index").reindex(columns=HEADERS_44)
+    # ── Build DataFrame — e-ticket rows only ─────────────────────────────────
+    ticket_master = {k: v for k, v in master.items() if is_valid_ticket(k)}
+    df = pd.DataFrame.from_dict(ticket_master, orient="index").reindex(columns=HEADERS_44)
 
     # Force string columns that must never be cast to numeric
     for _col in ("CreateIATANr", "PrimaryDocNbr", "FltNo", "OperatingFlightNbr",
