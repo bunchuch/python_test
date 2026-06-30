@@ -46,7 +46,7 @@ NAV_PAGES: dict[str, list] = {
 # ── Role display metadata ─────────────────────────────────────────────────────
 # (display_label, badge_background_colour)
 ROLE_BADGE: dict[str, tuple] = {
-    "user":  ("User",  "#2E86C1"),
+    "user":  ("User",  "#1e3a8a"),
     "admin": ("Admin", "#1a7a44"),
     "dev":   ("Dev",   "#7d3c98"),
 }

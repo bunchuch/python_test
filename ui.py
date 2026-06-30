@@ -108,25 +108,25 @@ section[data-testid="stSidebar"] .stButton button[kind="secondary"]:hover {
 
 /* Active nav item */
 section[data-testid="stSidebar"] .stButton button[kind="primary"] {
-    background: #eef2ff !important;
-    color: #1a6fff !important;
+    background: #e8edf8 !important;
+    color: #1e3a8a !important;
     font-weight: 700 !important;
 }
 section[data-testid="stSidebar"] .stButton button[kind="primary"]:hover {
-    background: #e0e8ff !important;
+    background: #d5ddf5 !important;
 }
 
 /* ── Upload drop zone ──────────────────────────────────────────────────────── */
 [data-testid="stFileUploaderDropzone"] {
-    border: 1.5px dashed #1a6fff !important;
+    border: 1.5px dashed #1e3a8a !important;
     border-radius: 10px !important;
-    background: #f8faff !important;
+    background: #f5f7fc !important;
     padding: clamp(16px, 2vh, 32px) 16px !important;
     min-height: clamp(100px, 12vh, 160px) !important;
 }
 [data-testid="stFileUploaderDropzoneInstructions"] span {
     font-size: clamp(11px, 0.9vw, 13px) !important;
-    color: #1a6fff !important;
+    color: #1e3a8a !important;
     font-weight: 600 !important;
 }
 [data-testid="stFileUploaderDropzone"] button { display: none !important; }
@@ -141,7 +141,7 @@ section[data-testid="stSidebar"] .stButton button[kind="primary"]:hover {
 .fs-metrics { display: flex; gap: 14px; margin-bottom: 22px; flex-wrap: wrap; }
 .fs-card {
     flex: 1; min-width: 140px;
-    background: linear-gradient(135deg, #1a6fff 0%, #52a5ff 100%);
+    background: linear-gradient(135deg, #1e3a8a 0%, #3461c4 100%);
     border-radius: 14px; padding: 20px 22px; color: #fff;
 }
 .fs-card .fs-lbl {
@@ -181,9 +181,9 @@ div[data-testid="stTabs"] div[data-baseweb="tab-list"] {
     border-bottom: 2px solid #eaedf3;
 }
 div[data-testid="stTabs"] button[data-baseweb="tab"][aria-selected="true"] {
-    color: #1a6fff !important;
+    color: #1e3a8a !important;
     font-weight: 600 !important;
-    border-bottom: 2px solid #1a6fff !important;
+    border-bottom: 2px solid #1e3a8a !important;
 }
 
 /* ── Toolbar buttons ────────────────────────────────────────────────────────── */
@@ -207,16 +207,16 @@ div[data-testid="stTabs"] button[data-baseweb="tab"][aria-selected="true"] {
 
 /* ── Primary buttons in main content — Forsight blue gradient ──────────────── */
 [data-testid="stMain"] .stButton button[kind="primary"] {
-    background: linear-gradient(135deg, #1a6fff 0%, #4a9fff 100%) !important;
+    background: linear-gradient(135deg, #1e3a8a 0%, #3461c4 100%) !important;
     border: none !important;
     color: #fff !important;
     font-weight: 600 !important;
     border-radius: 10px !important;
-    box-shadow: 0 3px 14px rgba(26,111,255,.22) !important;
+    box-shadow: 0 3px 14px rgba(30,58,138,.22) !important;
     transition: box-shadow .2s !important;
 }
 [data-testid="stMain"] .stButton button[kind="primary"]:hover {
-    box-shadow: 0 6px 22px rgba(26,111,255,.36) !important;
+    box-shadow: 0 6px 22px rgba(30,58,138,.36) !important;
 }
 [data-testid="stMain"] .stButton button[kind="primary"]:disabled {
     background: #c4d4ee !important;
@@ -385,7 +385,7 @@ def render_results(
                 <div class="fs-lbl">PNR-Only Rows</div>
                 <div class="fs-val">{len(pnr_rows):,}</div>
             </div>
-            <div class="fs-card" style="background:linear-gradient(135deg,#1050c8 0%,#3b82f6 100%);">
+            <div class="fs-card" style="background:linear-gradient(135deg,#162d6e 0%,#2952b3 100%);">
                 <div class="fs-lbl">Field Coverage</div>
                 <div class="fs-val">{pct:.0f}%</div>
             </div>

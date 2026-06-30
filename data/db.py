@@ -223,6 +223,17 @@ def list_users() -> list[dict]:
         return []
 
 
+def next_user_code() -> str:
+    """Return the next available K6-NNN user code based on current max id."""
+    try:
+        engine = get_engine()
+        with engine.connect() as conn:
+            max_id = conn.execute(text("SELECT ISNULL(MAX(id), 0) FROM users")).scalar() or 0
+        return f"K6-{int(max_id) + 1:03d}"
+    except SQLAlchemyError:
+        return "K6-001"
+
+
 def create_user(username: str, password: str, role: str) -> tuple[bool, str]:
     from core.crypto import hash_pw
     try:
